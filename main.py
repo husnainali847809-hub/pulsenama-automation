@@ -1,26 +1,27 @@
-
 import os
 import json
 import re
 import hashlib
+import textwrap
 import feedparser
 import requests
+
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from google import genai
-
-# ==============================
-# PULSENAMA AUTO PUBLISHER
-# ==============================
+from google.genai import types
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 FB_PAGE_ID = os.environ["FB_PAGE_ID"]
 FB_PAGE_TOKEN = os.environ["FB_PAGE_TOKEN"]
 
-MODEL = "gemini-flash-latest"
+TEXT_MODEL = "gemini-flash-latest"
+IMAGE_MODEL = "gemini-3.1-flash-image"
 GRAPH_VERSION = "v26.0"
-MAX_POSTS_PER_RUN = 1
+
 SEEN_FILE = "seen.json"
+STORY_FILE = "story.jpg"
 
 RSS_FEEDS = [
     "https://feeds.bbci.co.uk/news/world/rss.xml",
@@ -55,23 +56,27 @@ def get_news():
             feed = feedparser.parse(feed_url)
 
             for entry in feed.entries:
-                link = entry.get("link", "").strip()
                 title = entry.get("title", "").strip()
+                link = entry.get("link", "").strip()
                 summary = entry.get("summary", "").strip()
 
                 if not title or not link:
                     continue
 
                 published = entry.get("published")
+
                 if published:
                     try:
                         pub_date = parsedate_to_datetime(published)
+
                         if pub_date.tzinfo is None:
                             pub_date = pub_date.replace(
                                 tzinfo=timezone.utc
                             )
+
                         if pub_date < cutoff:
                             continue
+
                     except (ValueError, TypeError):
                         pass
 
@@ -82,7 +87,7 @@ def get_news():
                 })
 
         except Exception as e:
-            print("RSS error:", e)
+            print("RSS error:", str(e))
 
     return articles
 
@@ -91,40 +96,32 @@ def make_post(article):
     prompt = f"""
 You are the professional news editor of PulseNama.
 
-Create a Facebook news post in a natural mix of Urdu
-and English. Use Urdu script for Urdu sentences.
+Write a Facebook news post in a natural mix of Urdu and English.
+Use Urdu script for Urdu sentences.
 
 STRICT RULES:
 1. Use only facts provided in the source.
 2. Never invent names, dates, numbers or quotes.
 3. Do not present allegations as confirmed facts.
 4. Do not exaggerate or create clickbait.
-5. Write an attractive, accurate headline.
+5. Write an attractive and accurate headline.
 6. Write 2-3 short paragraphs.
 7. Add 3-5 relevant hashtags.
 8. Do not copy the source wording.
-9. If the article is unclear, misleading or lacks
-   enough information, set publish to false.
+9. If the article is unclear or lacks enough information,
+   set publish to false.
 10. Return valid JSON only.
 
 JSON format:
-{{
-  "publish": true,
-  "post_text": "Complete Facebook post"
-}}
+{{"publish": true, "post_text": "Complete Facebook post"}}
 
-NEWS TITLE:
-{article['title']}
-
-NEWS SUMMARY:
-{article['summary']}
-
-SOURCE:
-{article['link']}
+NEWS TITLE: {article['title']}
+NEWS SUMMARY: {article['summary']}
+SOURCE: {article['link']}
 """
 
     response = client.models.generate_content(
-        model=MODEL,
+        model=TEXT_MODEL,
         contents=prompt
     )
 
@@ -148,6 +145,118 @@ SOURCE:
     return post_text
 
 
+def generate_story_image(article):
+    prompt = f"""
+Create a professional, realistic editorial news photograph
+for a Facebook news Story.
+
+NEWS TOPIC: {article['title']}
+NEWS CONTEXT: {article['summary'][:1000]}
+
+Requirements:
+- Vertical 9:16 composition.
+- High-quality realistic editorial photography.
+- Visually relevant to the news topic.
+- Professional news-media appearance.
+- Strong composition and clear subject.
+- No text, no letters, no words.
+- No logos, no watermarks.
+- Do not depict fictional events as real.
+"""
+
+    response = client.models.generate_content(
+        model=IMAGE_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio="9:16"
+            )
+        )
+    )
+
+    generated = None
+
+    for part in response.parts:
+        if part.inline_data:
+            generated = part.as_image()
+            break
+
+    if generated is None:
+        raise RuntimeError("Gemini did not return a Story image.")
+
+    image = generated.convert("RGB")
+    image = ImageOps.fit(image, (1080, 1920))
+
+    draw = ImageDraw.Draw(image, "RGBA")
+
+    # Dark headline panel
+    draw.rectangle(
+        (0, 1250, 1080, 1920),
+        fill=(0, 0, 0, 185)
+    )
+
+    font_path = (
+        "/usr/share/fonts/truetype/dejavu/"
+        "DejaVuSans-Bold.ttf"
+    )
+
+    try:
+        brand_font = ImageFont.truetype(font_path, 48)
+        title_font = ImageFont.truetype(font_path, 64)
+    except OSError:
+        brand_font = ImageFont.load_default()
+        title_font = ImageFont.load_default()
+
+    draw.text(
+        (65, 1310),
+        "PULSENAMA  |  NEWS UPDATE",
+        font=brand_font,
+        fill=(255, 210, 60, 255)
+    )
+
+    title = article["title"]
+
+    words = title.split()
+    lines = []
+    current = ""
+
+    for word in words:
+        test = (current + " " + word).strip()
+
+        if draw.textlength(test, font=title_font) <= 950:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    y = 1410
+
+    for line in lines[:5]:
+        draw.text(
+            (65, y),
+            line,
+            font=title_font,
+            fill=(255, 255, 255, 255)
+        )
+        y += 85
+
+    draw.text(
+        (65, 1850),
+        "Follow PulseNama for more updates",
+        font=brand_font,
+        fill=(255, 255, 255, 255)
+    )
+
+    image.save(STORY_FILE, "JPEG", quality=90)
+
+    print("Story image created successfully.")
+
+
 def publish_to_facebook(message, source_url):
     url = (
         f"https://graph.facebook.com/"
@@ -165,18 +274,78 @@ def publish_to_facebook(message, source_url):
             ),
             "access_token": FB_PAGE_TOKEN
         },
-        timeout=30
+        timeout=60
     )
 
     result = response.json()
 
     if response.status_code != 200 or "id" not in result:
         raise RuntimeError(
-            "Facebook publishing failed: "
-            + json.dumps(result)
+            "Facebook post failed: " + json.dumps(result)
         )
 
     return result["id"]
+
+
+def publish_story():
+    photos_url = (
+        f"https://graph.facebook.com/"
+        f"{GRAPH_VERSION}/{FB_PAGE_ID}/photos"
+    )
+
+    with open(STORY_FILE, "rb") as image_file:
+        upload_response = requests.post(
+            photos_url,
+            data={
+                "published": "false",
+                "access_token": FB_PAGE_TOKEN
+            },
+            files={
+                "source": (
+                    "story.jpg",
+                    image_file,
+                    "image/jpeg"
+                )
+            },
+            timeout=120
+        )
+
+    upload_result = upload_response.json()
+
+    if upload_response.status_code != 200:
+        raise RuntimeError(
+            "Story image upload failed: "
+            + json.dumps(upload_result)
+        )
+
+    photo_id = upload_result.get("id")
+
+    if not photo_id:
+        raise RuntimeError("Facebook did not return a photo ID.")
+
+    story_url = (
+        f"https://graph.facebook.com/"
+        f"{GRAPH_VERSION}/{FB_PAGE_ID}/photo_stories"
+    )
+
+    story_response = requests.post(
+        story_url,
+        data={
+            "photo_id": photo_id,
+            "access_token": FB_PAGE_TOKEN
+        },
+        timeout=60
+    )
+
+    story_result = story_response.json()
+
+    if story_response.status_code != 200:
+        raise RuntimeError(
+            "Facebook Story publishing failed: "
+            + json.dumps(story_result)
+        )
+
+    print("Facebook Story published:", story_result)
 
 
 def main():
@@ -202,15 +371,29 @@ def main():
                 save_seen(seen)
                 continue
 
+            # Publish the news post first
             post_id = publish_to_facebook(
                 post,
                 article["link"]
             )
 
-            print("Published successfully:", post_id)
+            print("Facebook post published:", post_id)
 
+            # Save history so the post is not duplicated
             seen.append(article_id)
             save_seen(seen)
+
+            # Generate and publish the Story
+            try:
+                generate_story_image(article)
+                publish_story()
+
+            except Exception as story_error:
+                print(
+                    "Story publishing failed:",
+                    str(story_error)
+                )
+
             return
 
         except Exception as e:
