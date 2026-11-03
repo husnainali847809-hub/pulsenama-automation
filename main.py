@@ -258,33 +258,48 @@ Requirements:
 
 
 def publish_to_facebook(message, source_url):
+    """
+    Publish the news as a Facebook photo post.
+    The generated story.jpg is reused as the post image.
+    """
     url = (
         f"https://graph.facebook.com/"
-        f"{GRAPH_VERSION}/{FB_PAGE_ID}/feed"
+        f"{GRAPH_VERSION}/{FB_PAGE_ID}/photos"
     )
 
-    response = requests.post(
-        url,
-        data={
-            "message": (
-                message
-                + "\n\nSource: "
-                + source_url
-                + "\n\n© PulseNama"
-            ),
-            "access_token": FB_PAGE_TOKEN
-        },
-        timeout=60
+    caption = (
+        message
+        + "\\n\\nSource: "
+        + source_url
+        + "\\n\\n© PulseNama"
     )
+
+    with open(STORY_FILE, "rb") as image_file:
+        response = requests.post(
+            url,
+            data={
+                "message": caption,
+                "published": "true",
+                "access_token": FB_PAGE_TOKEN
+            },
+            files={
+                "source": (
+                    "pulsenama-news.jpg",
+                    image_file,
+                    "image/jpeg"
+                )
+            },
+            timeout=120
+        )
 
     result = response.json()
 
     if response.status_code != 200 or "id" not in result:
         raise RuntimeError(
-            "Facebook post failed: " + json.dumps(result)
+            "Facebook photo post failed: " + json.dumps(result)
         )
 
-    return result["id"]
+    return result.get("post_id", result["id"])
 
 
 def publish_story():
@@ -371,21 +386,23 @@ def main():
                 save_seen(seen)
                 continue
 
-            # Publish the news post first
+            # Generate one branded news image for BOTH the feed post and Story
+            generate_story_image(article)
+
+            # Publish the news as a photo post (image + caption)
             post_id = publish_to_facebook(
                 post,
                 article["link"]
             )
 
-            print("Facebook post published:", post_id)
+            print("Facebook photo post published:", post_id)
 
-            # Save history so the post is not duplicated
+            # Save history after the feed post succeeds
             seen.append(article_id)
             save_seen(seen)
 
-            # Generate and publish the Story
+            # Publish the same generated image as a Facebook Story
             try:
-                generate_story_image(article)
                 publish_story()
 
             except Exception as story_error:
