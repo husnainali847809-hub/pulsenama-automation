@@ -77,3 +77,5 @@ def main():
     print("Workflow finished.")
     if __name__ == "__main__":
         main()
+    print("MAIN.PY STARTED SUCCESSFULLY")
+    
