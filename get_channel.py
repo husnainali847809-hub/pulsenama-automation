@@ -1,17 +1,20 @@
 
 import os
-import requests
 import json
+import requests
 
 API_KEY = os.environ["BUFFER_API_KEY"]
+ORG_ID = "6aeb3bc99a6868c13ac5db02"
 
 query = """
-query {
-  account {
-    organizations {
-      id
-      name
-    }
+query GetChannels {
+  channels(input: {
+    organizationId: "6aeb3bc99a6868c13ac5db02"
+  }) {
+    id
+    name
+    displayName
+    service
   }
 }
 """
@@ -26,8 +29,19 @@ response = requests.post(
     timeout=30
 )
 
+response.raise_for_status()
 data = response.json()
 print(json.dumps(data, indent=2))
 
-if response.status_code != 200:
-    raise SystemExit("Buffer API request failed")
+if "errors" in data:
+    raise SystemExit("Buffer returned a GraphQL error.")
+
+channels = data.get("data", {}).get("channels", [])
+
+if not channels:
+    print("No channels found in this organization.")
+
+for channel in channels:
+    print("Channel:", channel.get("displayName"))
+    print("Service:", channel.get("service"))
+    print("Channel ID:", channel.get("id"))
