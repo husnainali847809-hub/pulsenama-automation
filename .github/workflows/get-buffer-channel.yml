@@ -1,0 +1,26 @@
+
+name: Get Buffer Channel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-channel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Get Buffer information
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+        run: python get_channel.py
