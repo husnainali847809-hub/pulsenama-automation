@@ -75,3 +75,5 @@ def main():
             break
 
     print("Workflow finished.")
+    if __name__ == "__main__":
+    main()
