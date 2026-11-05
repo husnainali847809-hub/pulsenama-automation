@@ -1,9 +1,9 @@
+
 name: Unique News Publisher
 
 on:
   workflow_dispatch:
   schedule:
-    # Five runs per day (UTC). Buffer controls the actual queue timing.
     - cron: "0 3,7,11,15,19 * * *"
 
 permissions:
@@ -17,6 +17,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,4 +44,11 @@ jobs:
 
       - name: Save duplicate history
         if: always()
-        run: | if [[ -n "$(git status --porcelain seen.json)" ]]; then git config user.name "github-actions[bot]" git config user.email "41898282+github-actions[bot]@users.noreply.github.com" git add seen.json git commit -m "Update Unique News history" || true git push fi
+        run: |
+          if [[ -n "$(git status --porcelain seen.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add seen.json
+            git commit -m "Update Unique News history" || true
+            git push
+          fi
