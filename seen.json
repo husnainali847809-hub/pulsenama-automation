@@ -48,6 +48,22 @@
    "title": "AIOU International Student Numbers Reach 1,500 Across 47 Countries",
    "updated": "2026-11-05T09:20:52+00:00"
   },
+  "6824c147ff0455a4b22b5fe367916fd145322f7571caa05fa3b4a22b20ed8648": {
+   "bucket": "breaking",
+   "category": "SPORTS",
+   "created": "2026-11-05T14:27:03+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-05T16:00:00.000Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793888822/unique-news/6824c147ff0455a4b22b5fe3-feed.jpg",
+   "feed_post_id": "6aec9237aa246d32e45cb0ed",
+   "headline": "India Wins 3-2 Against Pakistan in SAFF Championship Group B Opener",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-06T04:00:00.000Z",
+   "story_post_id": "6aec9238aa246d32e45cb180",
+   "title": "India beat Pakistan 3-2 in SAFF Championship Group B opener",
+   "updated": "2026-11-05T14:27:04+00:00"
+  },
   "6cde55fea3a7f0e353ce7686c81f4f370a4c2cb4601898fe7985bd48f8d91c10": {
    "bucket": "politics",
    "category": "POLITICS",
