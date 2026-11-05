@@ -1004,18 +1004,28 @@ def fit_headline(draw, headline, max_width, max_lines, start_size, min_size):
 
 
 def draw_highlighted_lines(draw, lines, font, x, y, line_height, white, yellow):
-    """White headline with the last words highlighted in yellow."""
+    """Bold white headline with a yellow highlight block behind its final words."""
     total = sum(len(line.split()) for line in lines)
     highlight = 2 if total >= 5 else 1
     index = 0
     for line in lines:
         cursor = x
         for word in line.split():
-            color = yellow if index >= total - highlight else white
-            draw.text(
-                (cursor, y), word, font=font, fill=color,
-                stroke_width=2, stroke_fill=(0, 0, 0),
-            )
+            word_width = draw.textlength(word, font=font)
+            if index >= total - highlight:
+                pad_x = 7
+                box_top = y + 5
+                box_bottom = y + int(getattr(font, "size", 58)) + 9
+                draw.rounded_rectangle(
+                    (cursor - pad_x, box_top, cursor + word_width + pad_x, box_bottom),
+                    radius=5, fill=yellow,
+                )
+                draw.text((cursor, y), word, font=font, fill=DARK)
+            else:
+                draw.text(
+                    (cursor, y), word, font=font, fill=white,
+                    stroke_width=2, stroke_fill=(0, 0, 0),
+                )
             cursor += draw.textlength(word + " ", font=font)
             index += 1
         y += line_height
@@ -1086,13 +1096,19 @@ def generate_ai_horde_art(image_brief, category):
 
     hint = CATEGORY_SCENE_HINTS.get(category, "")
     prompt = (
-        "Stylized cinematic editorial illustration for a news story, digital painting, "
-        "dramatic professional lighting, deep black shadows with golden yellow accent light, "
-        "original fictional characters with no recognisable real person, no text, "
-        "clean composition with a darker area in the lower third. "
-        f"{hint} Scene: {image_brief[:450]} "
-        "### text, letters, words, caption, watermark, logo, signature, "
-        "photo of a real person, celebrity face, deformed hands, blurry, low quality, nsfw, gore"
+        "Create a premium photorealistic editorial NEWS PHOTOGRAPH, not an illustration. "
+        "Looks like a real photojournalism photograph captured by a professional full-frame camera, "
+        "natural realistic human faces and anatomy, authentic skin and fabric textures, "
+        "crisp fine details, sharp subject focus, realistic depth of field, cinematic natural lighting, "
+        "balanced exposure, rich but believable colors, professional composition for a major news outlet. "
+        "Use a wide environmental scene with the main subject clearly visible in the upper and middle area; "
+        "keep the lower quarter visually simple and slightly darker so a headline can be placed there. "
+        "Fictional non-identifiable people only; do not depict a real public figure. No text, no symbols, "
+        "no logos, no watermark, no borders, no graphic violence. "
+        f"{hint} Story scene: {image_brief[:450]} "
+        "### illustration, painting, cartoon, anime, 3d render, CGI, plastic skin, "
+        "blurry, soft focus, low resolution, oversaturated, distorted face, extra fingers, "
+        "text, letters, captions, watermark, logo, signature, nsfw, gore"
     )
 
     payload = {
@@ -1195,8 +1211,11 @@ def create_news_art(image_brief, headline, category, seed):
 
     try:
         art = generate_ai_horde_art(image_brief, category)
-        fitted = ImageOps.fit(art, (1200, 1200), Image.Resampling.LANCZOS)
-        log.info("AI-only artwork ready for branding (%dx%d).", fitted.width, fitted.height)
+        # Keep the feed artwork in portrait 4:5 format. AI Horde remains at
+        # 512x512 to stay within the free/upfront-kudos work budget.
+        fitted = ImageOps.fit(art, (1080, 1350), Image.Resampling.LANCZOS)
+        fitted = fitted.filter(ImageFilter.UnsharpMask(radius=1.4, percent=115, threshold=3))
+        log.info("AI-only photorealistic artwork prepared (%dx%d).", fitted.width, fitted.height)
         return fitted, "ai"
     except Exception as exc:  # noqa: BLE001
         message = describe_error(exc)
@@ -1210,48 +1229,63 @@ def create_news_art(image_brief, headline, category, seed):
 # ==========================================================================
 
 def compose_feed_card(art, headline, category, art_label):
-    width = height = 1200
+    """Professional portrait news poster inspired by the supplied reference."""
+    width, height = 1080, 1350
     img = ImageOps.fit(art.convert("RGB"), (width, height), Image.Resampling.LANCZOS)
-    img = Image.blend(img, Image.new("RGB", (width, height), (0, 0, 0)), 0.12)
 
-    black = Image.new("RGB", (width, 760), BLACK_BRAND)
-    bottom_mask = Image.linear_gradient("L").resize((width, 760)).point(lambda p: int(p * 0.97))
-    img.paste(black, (0, height - 760), bottom_mask)
+    # Slight cinematic contrast while keeping the generated photograph visible.
+    img = Image.blend(img, Image.new("RGB", (width, height), (0, 0, 0)), 0.08)
+
+    # Dark lower gradient creates a clean, readable headline area without
+    # covering the main photographic subject.
+    gradient = Image.new("L", (width, 610))
+    px = gradient.load()
+    for yy in range(610):
+        alpha = int(235 * (yy / 609) ** 1.45)
+        for xx in range(width):
+            px[xx, yy] = alpha
+    img.paste(Image.new("RGB", (width, 610), BLACK_BRAND), (0, height - 610), gradient)
 
     draw = ImageDraw.Draw(img)
 
-    # Header
-    draw.rectangle((0, 0, width, 110), fill=BLACK_BRAND)
-    draw.rectangle((0, 110, width, 117), fill=YELLOW)
-    draw_brand_logo(draw, right=width - 55, top=28)
+    # Top-left brand treatment, similar to the reference poster.
+    header = img.crop((0, 0, width, 145))
+    header = Image.blend(header, Image.new("RGB", header.size, BLACK_BRAND), 0.30)
+    img.paste(header, (0, 0))
+    draw = ImageDraw.Draw(img)
+    draw_brand_logo(draw, right=455, top=34, scale=1.05)
+    draw.rounded_rectangle((485, 69, width - 58, 75), radius=3, fill=YELLOW)
 
-    # Headline (bottom-anchored)
-    text_x = 84
-    max_width = width - text_x - 55
-    font, lines, size = fit_headline(draw, headline, max_width, 4, 66, 40)
-    gap = int(size * 0.28)
+    # Headline anchored in the lower part of the photograph.
+    text_x = 70
+    max_width = width - text_x - 62
+    font, lines, size = fit_headline(draw, headline, max_width, 4, 62, 36)
+    gap = int(size * 0.22)
     line_height = size + gap
     block_height = len(lines) * line_height
-    bottom = 1085
+    bottom = 1190
     top = bottom - block_height
 
-    draw.rectangle((52, top + 6, 60, bottom - gap), fill=YELLOW)
+    # Category label above the headline.
+    chip_font = load_news_font(22)
+    category_text = str(category).upper()[:24]
+    chip_width = int(draw.textlength(category_text, font=chip_font)) + 38
+    chip_top = max(735, top - 70)
+    draw.rounded_rectangle(
+        (text_x, chip_top, text_x + chip_width, chip_top + 48),
+        radius=7, fill=YELLOW,
+    )
+    draw.text((text_x + 19, chip_top + 10), category_text, font=chip_font, fill=DARK)
+
     draw_highlighted_lines(draw, lines, font, text_x, top, line_height, WHITE, YELLOW)
 
-    # Category chip
-    chip_font = load_news_font(23)
-    chip_width = int(draw.textlength(category, font=chip_font)) + 44
-    chip_top = top - 78
-    draw.rounded_rectangle((text_x, chip_top, text_x + chip_width, chip_top + 52), radius=9, fill=YELLOW)
-    draw.text((text_x + 22, chip_top + 12), category, font=chip_font, fill=DARK)
-
-    # Footer
-    draw.rectangle((0, 1125, width, height), fill=BLACK_BRAND)
-    draw.rectangle((0, 1125, width, 1129), fill=YELLOW)
-    draw.text((55, 1152), "UNIQUE NEWS  |  STAY INFORMED", font=load_news_font(24), fill=YELLOW)
-    small = load_news_font(18, bold=False)
+    # Slim footer, keeping the visual hierarchy focused on the story.
+    draw.rectangle((0, 1270, width, height), fill=BLACK_BRAND)
+    draw.rectangle((0, 1270, width, 1275), fill=YELLOW)
+    draw.text((55, 1300), "UNIQUE NEWS  |  STAY INFORMED", font=load_news_font(22), fill=YELLOW)
+    small = load_news_font(16, bold=False)
     label_width = draw.textlength(art_label, font=small)
-    draw.text((width - 55 - label_width, 1158), art_label, font=small, fill=GREY)
+    draw.text((width - 55 - label_width, 1304), art_label, font=small, fill=GREY)
 
     return img
 
@@ -1590,7 +1624,7 @@ def process_article(article, state, stats):
     seed = int(key[:12], 16)
 
     art, art_kind = create_news_art(copy["image_brief"], copy["headline"], category, seed)
-    label = "AI-GENERATED EDITORIAL ILLUSTRATION"
+    label = "AI-GENERATED NEWS IMAGE"
     card = compose_feed_card(art, copy["headline"], category, label)
     feed_path = save_jpeg(card, f"{key[:16]}-feed.jpg")
     feed_url = upload_image(feed_path, key, "feed")
