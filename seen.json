@@ -96,6 +96,22 @@
    "title": "ECP fixes Feb 7 as polling date for first phase of Punjab local govt elections",
    "updated": "2026-11-05T09:22:09+00:00"
   },
+  "7f806f4d6ebc196f3a39fdee2f431c31ca87c3a4406b4c6fa6d1f3081c11b7a9": {
+   "bucket": "world",
+   "category": "BUSINESS",
+   "created": "2026-11-05T22:03:53+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-05T22:18:52.846Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793916231/unique-news/7f806f4d6ebc196f3a39fdee-feed.jpg",
+   "feed_post_id": "6aecfd49d49eaca59e02230d",
+   "headline": "Major Tech Stocks Fall Amid US Midterm Concerns Over AI Growth",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-05T22:18:52.846Z",
+   "story_post_id": "6aecfd4a425be630832b3f85",
+   "title": "Major tech stocks plunge as US midterms add to fears of AI slowdown",
+   "updated": "2026-11-05T22:03:54+00:00"
+  },
   "96a99be383fa36d156e221f6799ae4216cec73ff33b23c6d1ac215728d64901d": {
    "bucket": "sports",
    "created": "2026-11-05T09:19:34+00:00",
@@ -222,6 +238,14 @@
    "story_post_id": "6aec9548bd4c535e51593fd5",
    "title": "'Enough Evidence To Show': Centre Alleges CJP Activists Receiving Foreign Funds From Pakistan",
    "updated": "2026-11-05T14:40:08+00:00"
+  },
+  "ddc7c333f6a0aa68ea9f2fc33ef7f9c3814f2639b64916c0b03042caac699ef3": {
+   "bucket": "breaking",
+   "created": "2026-11-05T22:03:14+00:00",
+   "feed": "unsuitable",
+   "story": "skipped",
+   "title": "Fact-check: Does viral video show attack on Pakistan's ambassador to Iran?",
+   "updated": "2026-11-05T22:03:14+00:00"
   },
   "f20dbda8dc104dd0c34c6cdf4b14a942e0c51fdcdb5c20358617036589bb642c": {
    "bucket": "breaking",
