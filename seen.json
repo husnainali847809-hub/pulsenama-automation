@@ -127,6 +127,22 @@
    "title": "Second buyer makes rescue bid for Poundland as retailer faces collapse",
    "updated": "2026-11-05T09:20:31+00:00"
   },
+  "b9168ef4fd9cadd392cdb9d21dd6047df1b6f9d7d587936453c7965a16bc1cb2": {
+   "bucket": "entertainment",
+   "category": "SPORTS",
+   "created": "2026-11-05T15:10:43+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-05T15:25:43.332Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793891442/unique-news/b9168ef4fd9cadd392cdb9d2-feed.jpg",
+   "feed_post_id": "6aec9c73a3148845e408f739",
+   "headline": "India Defeats Pakistan 3-2 in Football Match After Stoppage-Time Scare",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-05T15:25:43.332Z",
+   "story_post_id": "6aec9c74a3148845e408f774",
+   "title": "Blue Tigers bite back against the drama as India beat Pakistan 3-2 sfter a stoppage-time scare",
+   "updated": "2026-11-05T15:10:44+00:00"
+  },
   "bedd115e6760aa0064b117e63103b9a6d2a764fd55ba70d488586a35474be631": {
    "bucket": "breaking",
    "category": "SPORTS",
