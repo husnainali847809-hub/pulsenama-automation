@@ -1097,7 +1097,7 @@ def generate_ai_horde_art(image_brief, category):
 
     payload = {
         "prompt": prompt,
-        "params": {"width": 768, "height": 768, "steps": 20, "cfg_scale": 7.5, "n": 1},
+        "params": {"width": 512, "height": 512, "steps": 15, "cfg_scale": 7.5, "n": 1},
         "nsfw": False,
         "censor_nsfw": True,
         "r2": True,
@@ -1110,7 +1110,16 @@ def generate_ai_horde_art(image_brief, category):
         headers=headers, json=payload, timeout=45, retries=1,
     )
     if response.status_code >= 400:
-        raise RuntimeError(f"AI Horde submit failed: HTTP {response.status_code} {redact(response.text[:300])}")
+        error_body = redact(response.text[:500])
+        if response.status_code == 403 and "KudosUpfront" in response.text:
+            raise RuntimeError(
+                "AI Horde requires upfront kudos for this request. "
+                "The request is configured at 512x512 and 15 steps to reduce its work budget. "
+                f"AI Horde response: {error_body}"
+            )
+        raise RuntimeError(
+            f"AI Horde submit failed: HTTP {response.status_code} {error_body}"
+        )
 
     request_id = response.json().get("id")
     if not request_id:
