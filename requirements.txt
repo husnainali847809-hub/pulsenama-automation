@@ -1,4 +1,3 @@
-requests
-feedparser
-google-genai
-Pillow
+google-genai>=1.0.0
+requests>=2.31.0
+cloudinary>=1.40.0
