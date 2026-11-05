@@ -176,7 +176,7 @@ GEMINI_MAX_ATTEMPTS = 4
 GEMINI_RETRY_DELAYS = (4, 12, 30)  # waits after attempt 1, 2, 3
 GEMINI_TIMEOUT_MS = 60_000
 
-MAX_REVIEWS_PER_RUN = 12          # max Gemini reviews per run
+MAX_REVIEWS_PER_RUN = 6           # max Gemini reviews per run
 MAX_CONSECUTIVE_GEMINI_FAILURES = 2
 MAX_AGE_HOURS = 36                # ignore older news
 MAX_ITEMS_PER_FEED = 15
@@ -190,6 +190,7 @@ AI_HORDE_BASE = "https://aihorde.net/api/v2"
 START_TIME = time.monotonic()
 WORK_DIR = None  # created in main()
 gemini_client = None
+EXHAUSTED_MODELS = set()  # models whose daily quota is used up in this run
 
 SESSION = requests.Session()
 SESSION.headers.update({
@@ -630,8 +631,12 @@ words; do not copy sentences from the item.
 
 Mark the item UNSUITABLE if it is unverified, rumour-based, sensational, clickbait,
 graphic violence, sexual content, hateful, a personal attack on a private person, a
-medical or financial recommendation, or if there is too little information to write a
-neutral, accurate summary.
+medical or financial recommendation.
+
+A clear, factual headline is enough information by itself. If the summary is short or
+only repeats the title, still write a short neutral caption using only what the title
+states, and do not guess missing details. Ordinary news (government decisions,
+business, sports, education, technology, weather, courts) is suitable.
 
 <news_item>
 Title: __TITLE__
@@ -811,13 +816,19 @@ def make_post_copy(article):
     )
     last_error = None
 
-    # 4 attempts total: primary model twice, then fallback models if configured.
-    schedule = [TEXT_MODEL, TEXT_MODEL] + GEMINI_FALLBACK_MODELS[:2]
-    while len(schedule) < GEMINI_MAX_ATTEMPTS:
-        schedule.append(TEXT_MODEL)
+    all_models = [TEXT_MODEL] + GEMINI_FALLBACK_MODELS[:2]
 
     for attempt in range(1, GEMINI_MAX_ATTEMPTS + 1):
-        model_name = schedule[attempt - 1]
+        # 4 attempts total: attempts 1-2 on the first usable model, then fallbacks.
+        available = [m for m in all_models if m not in EXHAUSTED_MODELS]
+        if not available:
+            raise GeminiUnavailable(
+                "Daily Gemini quota is used up for all configured models. "
+                "Next scheduled run will retry (quota resets daily)."
+            )
+        index = 0 if attempt <= 2 else min(attempt - 2, len(available) - 1)
+        model_name = available[index]
+        skip_wait = False
         if attempt > 2 and model_name != TEXT_MODEL:
             log.info("Trying fallback Gemini model: %s", model_name)
         try:
@@ -833,6 +844,8 @@ def make_post_copy(article):
                 return None
 
             data = parse_json_object(result.text or "")
+            if str(data.get("status", "OK")).strip().upper() == "UNSUITABLE":
+                log.info("Gemini reason for UNSUITABLE: %s", str(data.get("reason", "not given"))[:200])
             return validate_copy(data)
 
         except GeminiBadResponse as exc:
@@ -855,12 +868,17 @@ def make_post_copy(article):
                     f"Gemini invalid/permanent error (no retry): {describe_error(exc)}"
                 ) from exc
             last_error = exc
-            log.warning(
-                "Gemini attempt %d/%d failed with a temporary error: %s",
-                attempt, GEMINI_MAX_ATTEMPTS, describe_error(exc),
-            )
+            if getattr(exc, "code", None) == 429 and re.search(r"per ?day|daily", str(exc), flags=re.I):
+                EXHAUSTED_MODELS.add(model_name)
+                skip_wait = True
+                log.warning("Daily quota used up for model %s. Switching model without waiting.", model_name)
+            else:
+                log.warning(
+                    "Gemini attempt %d/%d failed with a temporary error: %s",
+                    attempt, GEMINI_MAX_ATTEMPTS, describe_error(exc),
+                )
 
-        if attempt < GEMINI_MAX_ATTEMPTS:
+        if attempt < GEMINI_MAX_ATTEMPTS and not skip_wait:
             wait = GEMINI_RETRY_DELAYS[min(attempt - 1, len(GEMINI_RETRY_DELAYS) - 1)]
             wait = wait * (1 + random.random() * 0.25)
             if time_left() < wait + 60:
