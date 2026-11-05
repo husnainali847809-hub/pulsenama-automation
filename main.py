@@ -4,7 +4,7 @@ Unique News - automated Facebook news publisher (v2)
 
 Pipeline:
   RSS (many sources) -> dedupe/balance -> Gemini review + copy (with retries)
-  -> AI Horde artwork (Pillow fallback) -> Pillow branding -> Cloudinary
+  -> AI Horde artwork (required; no artwork fallback) -> Pillow branding -> Cloudinary
   -> Buffer Facebook FEED post (queued) -> Buffer Facebook STORY (queued)
 
 Important facts:
@@ -163,6 +163,7 @@ REQUIRED_ENV = (
     "BUFFER_API_KEY",
     "BUFFER_CHANNEL_ID",
     "GEMINI_API_KEY",
+    "AI_HORDE_API_KEY",
     "CLOUDINARY_CLOUD_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
@@ -1054,93 +1055,6 @@ def draw_brand_logo(draw, right, top, scale=1.0):
 # PILLOW FALLBACK ARTWORK (different for every story)
 # ==========================================================================
 
-def draw_category_visual(draw, category, yellow, white):
-    if category == "BUSINESS":
-        points = [(810, 850), (900, 760), (980, 800), (1090, 650)]
-        draw.line(points, fill=yellow, width=14, joint="curve")
-        for x, y in points:
-            draw.ellipse((x - 13, y - 13, x + 13, y + 13), fill=white)
-        for x, y1, y2 in [(800, 900, 1010), (890, 850, 1010), (980, 890, 1010)]:
-            draw.rectangle((x, y1, x + 50, y2), fill=yellow)
-
-    elif category == "HEALTH":
-        draw.rounded_rectangle((900, 680, 1010, 1010), radius=20, fill=yellow)
-        draw.rounded_rectangle((790, 790, 1120, 900), radius=20, fill=yellow)
-
-    elif category == "SPORTS":
-        draw.ellipse((790, 680, 1120, 1010), outline=yellow, width=16)
-        draw.line((790, 845, 1120, 845), fill=white, width=6)
-        draw.line((955, 680, 955, 1010), fill=white, width=6)
-
-    elif category == "TECHNOLOGY":
-        for x in range(800, 1120, 65):
-            draw.line((x, 690, x, 1000), fill=yellow, width=4)
-        for y in range(700, 1010, 65):
-            draw.line((800, y, 1110, y), fill=yellow, width=4)
-        draw.ellipse((890, 780, 1020, 910), outline=white, width=10)
-
-    else:
-        draw.ellipse((790, 680, 1120, 1010), outline=yellow, width=14)
-        draw.arc((850, 680, 1060, 1010), 0, 360, fill=white, width=6)
-        draw.arc((790, 760, 1120, 930), 0, 360, fill=white, width=6)
-
-
-def generate_pillow_fallback_art(headline, category, seed):
-    """Text-free procedural artwork, varied by a per-story seed."""
-    size = 1200
-    rng = random.Random(seed)
-    tints = [(10, 16, 34), (34, 12, 14), (10, 30, 26), (28, 14, 38), (12, 26, 34), (34, 26, 10)]
-    base = rng.choice(tints)
-
-    img = Image.new("RGB", (size, size), base)
-    draw = ImageDraw.Draw(img)
-    for y in range(size):
-        factor = 1.9 - 1.3 * (y / size)
-        draw.line(
-            (0, y, size, y),
-            fill=tuple(max(0, min(255, int(c * factor))) for c in base),
-        )
-
-    overlay = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    odraw = ImageDraw.Draw(overlay)
-
-    for _ in range(rng.randint(5, 9)):
-        radius = rng.randint(120, 420)
-        cx = rng.randint(-100, size + 100)
-        cy = rng.randint(-100, 800)
-        color = rng.choice([YELLOW, WHITE, tuple(min(255, c * 4) for c in base)])
-        odraw.ellipse(
-            (cx - radius, cy - radius, cx + radius, cy + radius),
-            fill=color + (rng.randint(12, 38),),
-        )
-
-    for _ in range(rng.randint(3, 8)):
-        x0 = rng.randint(-200, size)
-        odraw.line(
-            (x0, 0, x0 + rng.randint(300, 700), size),
-            fill=YELLOW + (rng.randint(18, 40),),
-            width=rng.randint(2, 9),
-        )
-
-    gx, gy = rng.randint(40, 500), rng.randint(130, 400)
-    gw, gh = rng.randint(300, 600), rng.randint(180, 320)
-    for px in range(gx, gx + gw, 36):
-        for py in range(gy, gy + gh, 36):
-            odraw.ellipse((px - 2, py - 2, px + 2, py + 2), fill=WHITE + (70,))
-
-    ring_x, ring_y = rng.randint(640, 800), rng.randint(130, 260)
-    odraw.ellipse((ring_x - 60, ring_y - 40, ring_x + 440, ring_y + 460), outline=(70, 60, 30, 180), width=5)
-
-    img = Image.alpha_composite(img.convert("RGBA"), overlay)
-
-    icon = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw_category_visual(ImageDraw.Draw(icon), category, YELLOW, WHITE)
-    icon_crop = icon.crop((770, 640, 1140, 1030))
-    img.paste(icon_crop, (ring_x, ring_y + 10), icon_crop)
-
-    return img.convert("RGB")
-
-
 # ==========================================================================
 # AI HORDE IMAGE GENERATION (text-free artwork)
 # ==========================================================================
@@ -1255,19 +1169,31 @@ def generate_ai_horde_art(image_brief, category):
 
 
 def create_news_art(image_brief, headline, category, seed):
-    """AI Horde first, Pillow procedural artwork as automatic fallback."""
-    if AI_HORDE_API_KEY and time_left() > 420:
-        try:
-            art = generate_ai_horde_art(image_brief, category)
-            return ImageOps.fit(art, (1200, 1200), Image.Resampling.LANCZOS), "ai"
-        except Exception as exc:  # noqa: BLE001
-            log.warning("AI Horde failed. Using Pillow fallback. %s", describe_error(exc))
-    elif not AI_HORDE_API_KEY:
-        log.warning("AI_HORDE_API_KEY not set. Using Pillow fallback artwork.")
-    else:
-        log.warning("Not enough run time left for AI Horde. Using Pillow fallback artwork.")
+    """Generate the story artwork with AI Horde only; never fabricate a fallback."""
+    if not AI_HORDE_API_KEY:
+        raise RuntimeError(
+            "AI IMAGE GENERATION FAILED: AI_HORDE_API_KEY is missing. "
+            "Add it in GitHub repository Settings > Secrets and variables > Actions."
+        )
 
-    return generate_pillow_fallback_art(headline, category, seed), "pillow"
+    # Keep enough execution time for the remaining upload/posting steps.
+    available = int(time_left() - 90)
+    if available < 60:
+        raise RuntimeError(
+            f"AI IMAGE GENERATION FAILED: only {max(0, int(time_left()))} seconds remain; "
+            "not enough time to safely request an AI Horde image."
+        )
+
+    try:
+        art = generate_ai_horde_art(image_brief, category)
+        fitted = ImageOps.fit(art, (1200, 1200), Image.Resampling.LANCZOS)
+        log.info("AI-only artwork ready for branding (%dx%d).", fitted.width, fitted.height)
+        return fitted, "ai"
+    except Exception as exc:  # noqa: BLE001
+        message = describe_error(exc)
+        log.error("AI IMAGE GENERATION FAILED: %s", message)
+        gha("error", f"AI IMAGE GENERATION FAILED: {message}")
+        raise RuntimeError(f"AI IMAGE GENERATION FAILED: {message}") from exc
 
 
 # ==========================================================================
@@ -1655,7 +1581,7 @@ def process_article(article, state, stats):
     seed = int(key[:12], 16)
 
     art, art_kind = create_news_art(copy["image_brief"], copy["headline"], category, seed)
-    label = "AI-ASSISTED EDITORIAL ILLUSTRATION" if art_kind == "ai" else "EDITORIAL NEWS GRAPHIC"
+    label = "AI-GENERATED EDITORIAL ILLUSTRATION"
     card = compose_feed_card(art, copy["headline"], category, label)
     feed_path = save_jpeg(card, f"{key[:16]}-feed.jpg")
     feed_url = upload_image(feed_path, key, "feed")
@@ -1814,7 +1740,10 @@ def main():
             except Exception as exc:  # noqa: BLE001
                 stats["other_failures"] += 1
                 consecutive_gemini_failures = 0
-                log.error("Article failed, NOT marked as seen: %s", describe_error(exc))
+                message = describe_error(exc)
+                log.error("Article failed, NOT marked as seen: %s", message)
+                if "AI IMAGE GENERATION FAILED" in str(exc):
+                    gha("error", message)
 
         failures = stats["gemini_failures"] + stats["other_failures"]
         if stats["feeds_queued"] == 0 and failures > 0:
