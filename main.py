@@ -1,3 +1,4 @@
+
 import os
 import re
 import json
@@ -22,8 +23,8 @@ CLOUDINARY_CLOUD_NAME = os.environ["CLOUDINARY_CLOUD_NAME"]
 CLOUDINARY_API_KEY = os.environ["CLOUDINARY_API_KEY"]
 CLOUDINARY_API_SECRET = os.environ["CLOUDINARY_API_SECRET"]
 
-TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
-IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.8-flash")
+IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
 MAX_ARTICLES_PER_RUN = int(os.getenv("MAX_ARTICLES_PER_RUN", "1"))
 SEEN_FILE = Path("seen.json")
 
