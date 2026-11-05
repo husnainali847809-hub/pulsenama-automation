@@ -158,6 +158,22 @@
    "story_post_id": "6aec4d26534ed2a8ec8fda52",
    "title": "Saudi Bails Out Pakistan With $3 Billion Lifeline As US $10 Billion Liquidity Support Remains Uncertain",
    "updated": "2026-11-05T09:32:22+00:00"
+  },
+  "d4375b1317cde2992c17f5068402ac86c3aaf995aca5963cb1c8c5e47710ba5e": {
+   "bucket": "breaking",
+   "category": "POLITICS",
+   "created": "2026-11-05T14:40:07+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-06T08:00:00.000Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793889605/unique-news/d4375b1317cde2992c17f506-feed.jpg",
+   "feed_post_id": "6aec9547e28c1572bf760b44",
+   "headline": "Centre Alleges CJP Activists Received Foreign Funds From Pakistan",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-06T13:00:00.000Z",
+   "story_post_id": "6aec9548bd4c535e51593fd5",
+   "title": "'Enough Evidence To Show': Centre Alleges CJP Activists Receiving Foreign Funds From Pakistan",
+   "updated": "2026-11-05T14:40:08+00:00"
   }
  },
  "version": 2
