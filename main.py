@@ -1099,15 +1099,17 @@ def generate_ai_horde_art(image_brief, category):
         "Create a premium photorealistic editorial NEWS PHOTOGRAPH, not an illustration. "
         "Looks like a real photojournalism photograph captured by a professional full-frame camera, "
         "natural realistic human faces and anatomy, authentic skin and fabric textures, "
-        "crisp fine details, sharp subject focus, realistic depth of field, cinematic natural lighting, "
-        "balanced exposure, rich but believable colors, professional composition for a major news outlet. "
-        "Use a wide environmental scene with the main subject clearly visible in the upper and middle area; "
-        "keep the lower quarter visually simple and slightly darker so a headline can be placed there. "
+        "tack-sharp focus across the main scene, exceptionally clear fine details, clean edges, "
+        "high-detail professional photojournalism, deep focus, crisp subject and background details, "
+        "natural cinematic lighting, balanced exposure, realistic colors, no haze or motion blur. "
+        "Compose a full-bleed vertical editorial news photograph with the main subject clearly visible "
+        "through the center and upper area; leave the lower quarter compositionally calm for a headline. "
         "Fictional non-identifiable people only; do not depict a real public figure. No text, no symbols, "
         "no logos, no watermark, no borders, no graphic violence. "
         f"{hint} Story scene: {image_brief[:450]} "
         "### illustration, painting, cartoon, anime, 3d render, CGI, plastic skin, "
-        "blurry, soft focus, low resolution, oversaturated, distorted face, extra fingers, "
+        "blur, blurry, soft focus, motion blur, out of focus, haze, fog, low detail, pixelated, "
+        "low resolution, oversharpening, oversaturated, distorted face, extra fingers, "
         "text, letters, captions, watermark, logo, signature, nsfw, gore"
     )
 
@@ -1248,13 +1250,10 @@ def compose_feed_card(art, headline, category, art_label):
 
     draw = ImageDraw.Draw(img)
 
-    # Top-left brand treatment, similar to the reference poster.
-    header = img.crop((0, 0, width, 145))
-    header = Image.blend(header, Image.new("RGB", header.size, BLACK_BRAND), 0.30)
-    img.paste(header, (0, 0))
+    # Clean full-bleed AI photograph: only the channel logo/name at the top.
+    # No header band, border, separator line, or extra decoration.
     draw = ImageDraw.Draw(img)
-    draw_brand_logo(draw, right=455, top=34, scale=1.05)
-    draw.rounded_rectangle((485, 69, width - 58, 75), radius=3, fill=YELLOW)
+    draw_brand_logo(draw, right=520, top=34, scale=1.05)
 
     # Headline anchored in the lower part of the photograph.
     text_x = 70
@@ -1341,7 +1340,7 @@ def compose_story_card(feed_img, category):
 
 def save_jpeg(img, name):
     path = WORK_DIR / name
-    img.convert("RGB").save(path, format="JPEG", quality=92, optimize=True)
+    img.convert("RGB").save(path, format="JPEG", quality=95, subsampling=0, optimize=True)
     return str(path)
 
 
@@ -1402,20 +1401,23 @@ mutation CreateUniqueNewsPost($input: CreatePostInput!) {
 """
 
 
-def buffer_create_post(text, image_url, post_type):
+def buffer_create_post(text, image_url, post_type, due_at=None):
     """
     Queue one Facebook post through Buffer. post_type: "post" or "story".
-    Returns Buffer's post dict. "Success" means QUEUED, not published.
+    When due_at is supplied, use Buffer customScheduled with that exact UTC time.
+    Returns Buffer's post dict. "Success" means SCHEDULED, not published.
     """
     payload = {
         "text": text,
         "channelId": BUFFER_CHANNEL_ID,
         "schedulingType": "automatic",
-        "mode": "addToQueue",
+        "mode": "customScheduled" if due_at else "addToQueue",
         "assets": [{"image": {"url": image_url}}],
         "metadata": {"facebook": {"type": post_type}},
         "aiAssisted": True,
     }
+    if due_at:
+        payload["dueAt"] = due_at
     headers = {
         "Authorization": f"Bearer {BUFFER_API_KEY}",
         "Content-Type": "application/json",
@@ -1508,7 +1510,7 @@ def download_image(url):
     return Image.open(BytesIO(response.content)).convert("RGB")
 
 
-def attempt_story(key, record, state, feed_img=None):
+def attempt_story(key, record, state, feed_img=None, due_at=None):
     """
     Queue the Story for an already-queued Feed post.
     Never touches the Feed status. Updates only Story fields in seen.json.
@@ -1524,18 +1526,25 @@ def attempt_story(key, record, state, feed_img=None):
         story_path = save_jpeg(story_img, f"{key[:16]}-story.jpg")
         story_url = upload_image(story_path, key, "story")
 
+        # For a new article, reuse the Feed's exact scheduled UTC timestamp.
+        # A delayed retry without due_at follows Buffer's normal queue instead.
+        story_due_at = due_at or record.get("feed_due_at")
+        if story_due_at and parse_date(story_due_at) and parse_date(story_due_at) <= utc_now():
+            story_due_at = None
         post = buffer_create_post(
             record.get("headline") or record.get("title") or "Unique News",
             story_url,
             "story",
+            due_at=story_due_at,
         )
         record["story"] = "queued"
         record["story_post_id"] = post.get("id")
         record["story_due_at"] = post.get("dueAt")
         record.pop("story_error", None)
+        schedule_label = "custom-scheduled" if story_due_at else "added to queue"
         log.info(
-            "Facebook STORY queued in Buffer (not yet published). id=%s dueAt=%s",
-            post.get("id"), post.get("dueAt"),
+            "Facebook STORY %s in Buffer (not yet published). id=%s dueAt=%s",
+            schedule_label, post.get("id"), post.get("dueAt"),
         )
         return True
 
@@ -1632,8 +1641,12 @@ def process_article(article, state, stats):
 
     text = build_feed_text(copy["headline"], copy["caption"], article["link"], copy["hashtags"])
 
+    # Schedule both Facebook placements for one identical future instant.
+    # A 15-minute lead gives the Story time to upload before its scheduled slot.
+    shared_due_at = (utc_now() + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
     try:
-        post = buffer_create_post(text, feed_url, "post")
+        post = buffer_create_post(text, feed_url, "post", due_at=shared_due_at)
     except BufferAmbiguousError as exc:
         # Do not retry (could duplicate). Remember it so it is never re-posted.
         log.warning("Feed status unclear: %s Check Buffer's queue manually.", describe_error(exc))
@@ -1653,9 +1666,12 @@ def process_article(article, state, stats):
         return
 
     log.info(
-        "Facebook FEED post queued in Buffer (not yet published). id=%s dueAt=%s",
+        "Facebook FEED post custom-scheduled in Buffer (not yet published). id=%s dueAt=%s",
         post.get("id"), post.get("dueAt"),
     )
+
+    # Use Buffer's returned canonical timestamp for the Story as well.
+    feed_due_at = post.get("dueAt") or shared_due_at
 
     record = {
         "title": article["title"],
@@ -1664,7 +1680,7 @@ def process_article(article, state, stats):
         "category": category,
         "feed": "queued",
         "feed_post_id": post.get("id"),
-        "feed_due_at": post.get("dueAt"),
+        "feed_due_at": feed_due_at,
         "feed_image_url": feed_url,
         "story": "pending" if ENABLE_STORIES else "skipped",
         "story_attempts": 0,
@@ -1677,7 +1693,7 @@ def process_article(article, state, stats):
     stats["feeds_queued"] += 1
 
     if ENABLE_STORIES:
-        if attempt_story(key, record, state, feed_img=card):
+        if attempt_story(key, record, state, feed_img=card, due_at=feed_due_at):
             stats["stories_queued"] += 1
         else:
             stats["story_failures"] += 1
