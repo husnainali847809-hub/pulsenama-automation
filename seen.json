@@ -1,3 +1,44 @@
-[
-  "ac556becd44b3fe7fd035fa53339bde8e41bf3e443ec70b141ebc94e99a532f1"
-]
+{
+ "articles": {
+  "0f842fe46791387e001a50ffdc5725d572a993f609cd9b9b928e3ccdc2ea9c30": {
+   "bucket": "social",
+   "created": "2026-11-05T09:02:22+00:00",
+   "feed": "unsuitable",
+   "story": "skipped",
+   "title": "LATEST: ‘Landmark’ FATF report outlines how social media enables scam centres",
+   "updated": "2026-11-05T09:02:22+00:00"
+  },
+  "0ffc601380f4be0779dbc583017cbf7d951e7a35d74fdb18b2b5d37524e13c39": {
+   "bucket": "technology",
+   "category": "WORLD",
+   "created": "2026-11-05T09:03:24+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-06T04:33:00.000Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793869403/unique-news/0ffc601380f4be0779dbc583-feed.jpg",
+   "feed_post_id": "6aec465c3bc96a90e8ef1346",
+   "headline": "Jordanian Monarch Travels to Kazakhstan for Talks on Artificial Intelligence Security",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-07T01:33:00.000Z",
+   "story_post_id": "6aec465d21bb211447977df8",
+   "title": "Jordan's king heads to Kazakhstan for talks on artificial intelligence security",
+   "updated": "2026-11-05T09:03:25+00:00"
+  },
+  "47d8437adbd247019434792cb005a7c7ecc5ebb2e48bbd4ae01721d0368185cb": {
+   "bucket": "breaking",
+   "created": "2026-11-05T08:59:26+00:00",
+   "feed": "unsuitable",
+   "story": "skipped",
+   "title": "PTA Gives Statement on TikTok Ban in Pakistan",
+   "updated": "2026-11-05T08:59:26+00:00"
+  },
+  "ac556becd44b3fe7fd035fa53339bde8e41bf3e443ec70b141ebc94e99a532f1": {
+   "feed": "queued",
+   "legacy": true,
+   "story": "skipped",
+   "title": "",
+   "updated": "1970-01-01T00:00:00+00:00"
+  }
+ },
+ "version": 2
+}
