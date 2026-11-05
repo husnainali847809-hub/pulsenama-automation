@@ -1165,7 +1165,7 @@ def generate_ai_horde_art(image_brief, category):
 
     payload = {
         "prompt": prompt,
-        "params": {"width": 1024, "height": 1024, "steps": 25, "cfg_scale": 7.5, "n": 1},
+        "params": {"width": 768, "height": 768, "steps": 20, "cfg_scale": 7.5, "n": 1},
         "nsfw": False,
         "censor_nsfw": True,
         "r2": True,
