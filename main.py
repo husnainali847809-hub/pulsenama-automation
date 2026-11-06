@@ -76,7 +76,7 @@ WORK_DIR = None
 REQUIRED = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "BUFFER_CHANNEL_ID", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
 
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Biz PakistanPublisher/6.0", "Accept": "application/rss+xml,application/xml,text/html,image/*,*/*"})
+SESSION.headers.update({"User-Agent": "BizPakistanPublisher/6.0", "Accept": "application/rss+xml,application/xml,text/html,image/*,*/*"})
 
 class FatalError(Exception): pass
 class StateError(Exception): pass
@@ -317,7 +317,7 @@ def openverse_image_candidates(article):
                     "aspect_ratio": "wide", "size": "large", "page_size": 10,
                     "filter_dead": "true", "mature": "false"},
             headers={"Accept": "application/json",
-                     "User-Agent": "Biz PakistanPublisher/6.2 (openly licensed news photo search)"},
+                     "User-Agent": "BizPakistanPublisher/6.2 (openly licensed news photo search)"},
             timeout=(10, 25)
         )
         content_type = response.headers.get("Content-Type", "")
@@ -424,7 +424,7 @@ def image_candidates(article):
                f"&gsrsearch={query}&gsrnamespace=6&gsrlimit=8"
                "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600&format=json")
         response = http("GET", api, retries=1, timeout=(10, 25),
-                        headers={"User-Agent": "Biz PakistanPublisher/6.1 (news image licence lookup)"})
+                        headers={"User-Agent": "BizPakistanPublisher/6.1 (news image licence lookup)"})
         response.raise_for_status()
         pages = (response.json().get("query") or {}).get("pages") or {}
         for page in pages.values():
@@ -680,7 +680,7 @@ def font(size, bold=True):
 
 def draw_logo(draw, right, top):
     f, mark_font, mark = font(24), font(28), 46
-    word, suffix = "BIZ", "PAKISTAN"
+    word, suffix = "BIZ ", "PAKISTAN"
     total = mark + 10 + draw.textlength(word + suffix, font=f)
     x = right - total
     draw.rounded_rectangle((x, top, x + mark, top + mark), radius=8, fill=GOLD)
