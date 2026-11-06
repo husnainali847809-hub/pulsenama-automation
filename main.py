@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PulseNama: RSS -> OpenRouter editorial review -> licensed photo or original brand graphic -> Cloudinary -> Buffer."""
 
-import os, re, sys, json, time, html, hashlib, logging, tempfile, random
+import os, re, sys, json, time, html, hashlib, logging, tempfile, random, base64
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -30,7 +30,7 @@ def env_bool(k, default=True):
     v = env(k).lower()
     return default if not v else v in ("1", "true", "yes", "on")
 
-SECRET_NAMES = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "PEXELS_API_KEY")
+SECRET_NAMES = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "PEXELS_API_KEY", "CLOUDFLARE_API_TOKEN")
 
 def redact(value):
     value = str(value)
@@ -59,6 +59,8 @@ def gha(level, message):
 
 OPENROUTER_KEY = env("OPENROUTER_API_KEY")
 PEXELS_API_KEY = env("PEXELS_API_KEY")
+CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID")
+CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN")
 OPENROUTER_MODEL = env("OPENROUTER_MODEL", "openrouter/free")
 FALLBACK_MODELS = [x.strip() for x in env("OPENROUTER_FALLBACK_MODELS").split(",") if x.strip()]
 BUFFER_KEY, BUFFER_CHANNEL = env("BUFFER_API_KEY"), env("BUFFER_CHANNEL_ID")
@@ -73,7 +75,7 @@ RUN_BUDGET = env_int("RUN_BUDGET_SECONDS", 1200, 300, 2400)
 SEEN = Path("seen.json")
 START = time.monotonic()
 WORK_DIR = None
-REQUIRED = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "BUFFER_CHANNEL_ID", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
+REQUIRED = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "BUFFER_CHANNEL_ID", "CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN")
 
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "PulseNamaPublisher/6.0", "Accept": "application/rss+xml,application/xml,text/html,image/*,*/*"})
@@ -487,6 +489,49 @@ def validate_photo(data):
         raise ValueError("Image aspect ratio unsuitable.")
     return image
 
+def generate_news_image(article, copy, category):
+    """Generate an original 3D editorial illustration; never pretend it is an event photograph."""
+    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+        raise FatalError("AI image generation is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN GitHub Secrets.")
+    headline = clean(copy.get("headline") or article.get("title") or "Current news")[:180]
+    summary = clean(article.get("summary") or "")[:420]
+    category = clean(category or article.get("bucket") or "news")[:40]
+    prompt = (
+        "Create one polished, high-quality 3D editorial illustration for a professional news channel. "
+        "It must be clearly an illustrative 3D-rendered scene, not a real press photograph and not a claim to show the exact real event. "
+        "Use a cinematic but credible newsroom visual style, realistic materials and lighting, strong composition, and a clean uncluttered scene. "
+        "Represent the general subject accurately without inventing specific people, exact locations, flags, logos, readable signs, numbers, or event details. "
+        "Do not depict identifiable real people. For accidents or disasters, keep the scene non-graphic and respectful. "
+        "Do not include any text, letters, words, captions, labels, logos, watermarks, borders, or UI elements anywhere in the image. "
+        f"News category: {category}. News headline: {headline}. Context supplied by the news feed: {summary}. "
+        "Create only the visual scene; the PulseNama logo and channel name will be added separately."
+    )
+    endpoint = (
+        "https://api.cloudflare.com/client/v4/accounts/"
+        f"{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell"
+    )
+    response = http(
+        "POST", endpoint, retries=1, timeout=(20, 180),
+        headers={"Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+                 "Content-Type": "application/json"},
+        json={"prompt": prompt[:2048], "steps": 4}
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not payload.get("success"):
+        errors = payload.get("errors") or []
+        raise RuntimeError("Cloudflare image generation failed: " + redact(json.dumps(errors)[:300]))
+    encoded = (payload.get("result") or {}).get("image")
+    if not encoded:
+        raise RuntimeError("Cloudflare image model returned no image data.")
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("Cloudflare returned invalid base64 image data.") from exc
+    photo = validate_photo(image_bytes)
+    log.info("Generated original 3D editorial image with FLUX.1 schnell (%dx%d).", *photo.size)
+    return photo
+
 def get_news_photo(article):
     checked = set()
     for candidate in image_candidates(article):
@@ -822,8 +867,8 @@ def attempt_story(key, record, state, photo=None, due=None):
     record["story_attempts"] = int(record.get("story_attempts", 0)) + 1
     try:
         if photo is None:
-            if record.get("photo_mode") != "licensed" or not record.get("original_photo_url"):
-                raise RuntimeError("No reusable news photo is available for this story.")
+            if record.get("photo_mode") not in ("licensed", "ai_generated") or not record.get("original_photo_url"):
+                raise RuntimeError("No reusable source image is available for this story.")
             photo = download_image(record["original_photo_url"])
         path = make_graphic(photo, record.get("headline") or record.get("title", "PulseNama"),
                             record.get("category", "LATEST NEWS"), True, key)
@@ -936,17 +981,15 @@ def process_article(article, state, stats):
         stats["unsuitable"] += 1
         return
 
-    # Publish only when a real news photo with established reuse rights is available.
-    # Otherwise skip this article instead of publishing a text-only graphic.
-    photo, photo_url = get_news_photo(article)
-    if not photo:
-        stats["photo_permission_skips"] += 1
-        log.warning("No reusable news photo found; skipping this article instead of publishing a graphic.")
-        return
-    photo_mode = "licensed"
-    log.info("Using a real photo with an established reuse basis.")
-
     category = copy["category"] or CATEGORY.get(article["bucket"], "LATEST NEWS")
+
+    # Generate a fresh, topic-matched 3D illustration for every approved news item.
+    # Keep an unbranded source copy in Cloudinary so Feed and Story can use the same scene.
+    photo = generate_news_image(article, copy, category)
+    source_path = save_jpeg(photo, f"{key[:16]}-source.jpg")
+    photo_url = upload_image(source_path, key, "source")
+    photo_mode = "ai_generated"
+    stats["ai_images_generated"] += 1
     feed_path = make_graphic(photo, copy["headline"], category, False, key)
     feed_url = upload_image(feed_path, key, "feed")
     credit = article.get("photo_credit") or {}
@@ -1010,7 +1053,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nImages use third-party photos only when reuse rights are established; otherwise an original brand graphic is used.\n")
+            summary.write("\nNews visuals are AI-generated 3D editorial illustrations, not photographs of the actual events. PulseNama branding is overlaid separately.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
@@ -1025,15 +1068,14 @@ def main():
     WORK_DIR = Path(tempfile.mkdtemp(prefix="pulsenama_"))
     stats = {"reviewed": 0, "unsuitable": 0, "feeds_queued": 0, "feed_unconfirmed": 0,
              "stories_queued": 0, "story_failures": 0, "openrouter_failures": 0,
-             "other_failures": 0, "photo_permission_skips": 0, "brand_graphics_used": 0}
+             "other_failures": 0, "ai_images_generated": 0}
     exit_code = 0
     try:
         init_clients()
         state = load_state()
         log.info("PulseNama | OpenRouter=%s | max posts=%d | stories=%s | history=%d",
                  OPENROUTER_MODEL, MAX_POSTS, ENABLE_STORIES, len(state["articles"]))
-        if not env("IMAGE_ALLOWED_DOMAINS"):
-            log.warning("IMAGE_ALLOWED_DOMAINS empty: third-party photos require explicit license metadata; brand graphics remain available.")
+        log.info("AI image generation enabled: Cloudflare FLUX.1 schnell.")
         retry_stories(state, stats)
         candidates = select_candidates(fetch_news(), state)
         log.info("%d fresh candidates after filtering.", len(candidates))
@@ -1048,8 +1090,6 @@ def main():
             try:
                 before = stats["feeds_queued"]
                 process_article(article, state, stats)
-                if stats["feeds_queued"] > before and state["articles"][article["key"]].get("photo_mode") == "brand_graphic":
-                    stats["brand_graphics_used"] += 1
                 consecutive_ai = 0
             except AIError as exc:
                 stats["openrouter_failures"] += 1
@@ -1077,9 +1117,9 @@ def main():
         gha("error", f"Unexpected error: {redact(exc)}")
         exit_code = 1
 
-    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d | brand graphics=%d",
-             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["unsuitable"],
-             stats["openrouter_failures"], stats["other_failures"], stats["brand_graphics_used"])
+    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | AI images generated=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d",
+             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["ai_images_generated"],
+             stats["unsuitable"], stats["openrouter_failures"], stats["other_failures"])
     write_summary(stats)
     return exit_code
 
