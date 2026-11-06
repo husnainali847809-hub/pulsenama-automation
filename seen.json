@@ -48,6 +48,22 @@
    "title": "Pakistan cuts petrol price by Rs9.41 per liter as global oil slides",
    "updated": "2026-11-05T19:15:26+00:00"
   },
+  "19b389d316fdc8fc08264103f6e5a8742a3e8e020ae7582e390ed3830d39df8d": {
+   "bucket": "entertainment",
+   "category": "ENTERTAINMENT",
+   "created": "2026-11-06T04:12:20+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-06T04:27:19.497Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793938338/unique-news/19b389d316fdc8fc08264103-feed.jpg",
+   "feed_post_id": "6aed53a386fe9b8379703875",
+   "headline": "Pakistan Selects 'Hanging by a Wire' as Official Oscars Submission",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-06T04:27:19.497Z",
+   "story_post_id": "6aed53a5c1e74b84e5c64926",
+   "title": "‘Hanging by a Wire’: Inside Pakistan’s Oscar submission",
+   "updated": "2026-11-06T04:12:21+00:00"
+  },
   "3880731809dbbf5e7ad5887f8aa87270ec3feb44879c00c2234c8fb913adc140": {
    "bucket": "business",
    "category": "BUSINESS",
@@ -127,6 +143,14 @@
    "story_post_id": "6aecfd4a425be630832b3f85",
    "title": "Major tech stocks plunge as US midterms add to fears of AI slowdown",
    "updated": "2026-11-05T22:03:54+00:00"
+  },
+  "8ee3dd086a8a7176a04f0d86635718b44a71ee2b6d78f5470e1b2f87b59105e2": {
+   "bucket": "breaking",
+   "created": "2026-11-06T04:11:58+00:00",
+   "feed": "unsuitable",
+   "story": "skipped",
+   "title": "IPL 2027 trade tracker: Confirmed deals and rumours",
+   "updated": "2026-11-06T04:11:58+00:00"
   },
   "96a99be383fa36d156e221f6799ae4216cec73ff33b23c6d1ac215728d64901d": {
    "bucket": "sports",
