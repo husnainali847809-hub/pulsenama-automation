@@ -6,9 +6,9 @@ Automated news review and publishing to Facebook through Buffer.
 
 Biz Pakistan uses a relevant source photograph from the news item or a verified reusable image source. It does not generate abstract AI images or publish random images just to fill a post.
 
-Each selected photo receives gentle professional enhancement for clearer detail, natural contrast, and richer depth. This creates a more dimensional, polished appearance while preserving the original photograph. It is not converted into a literal 3D render and does not invent details about a real event.
+The complete source photograph is preserved without aggressive filters, sharpening, or center-cropping. The full photo is fitted inside the Feed and Story formats so people and important details are not cut off. Any unused canvas space uses a plain dark background. Photos are saved at high JPEG quality.
 
-The only overlay is the Biz Pakistan logo and channel name. No headline, breaking-news label, category, slogan, or extra text is added. Feed and Story use the same source scene with different crops.
+The only overlay is the Biz Pakistan logo and channel name. No headline, breaking-news label, category, slogan, or extra text is added. Feed and Story use the same complete source photograph without cropping.
 
 If a suitable photo with verified reuse rights cannot be found, that news item is skipped rather than publishing a poor-quality or unrelated visual.
 
