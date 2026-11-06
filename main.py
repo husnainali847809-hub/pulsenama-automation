@@ -858,7 +858,7 @@ def download_image(url):
 
 def make_graphic(photo, headline, category, story, key):
     if photo is None:
-        raise ValueError("A real, reusable news photo is required; text-only graphics are disabled.")
+        raise ValueError("A generated or otherwise validated source image is required; text-only graphics are disabled.")
     image = photo_card(photo, story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
