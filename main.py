@@ -724,18 +724,11 @@ def fit_lines(draw, text, max_width, max_lines, start_size, min_size):
     return selected_font, lines, min_size
 
 def prepare_photo(photo):
-    image = ImageOps.exif_transpose(photo).convert("RGB")
-    # Gentle professional enhancement: preserve the real news photograph while
-    # improving local contrast, colour separation and fine detail for a richer,
-    # dimensional (3D-like) appearance. Avoid aggressive filters or fake details.
-    image = ImageEnhance.Color(image).enhance(1.08)
-    image = ImageEnhance.Brightness(image).enhance(1.025)
-    image = ImageEnhance.Contrast(image).enhance(1.10)
-    image = ImageEnhance.Sharpness(image).enhance(1.18)
-    return image.filter(ImageFilter.UnsharpMask(radius=1.4, percent=95, threshold=3))
+    """Preserve the original news photo; do not apply filters that can damage detail."""
+    return ImageOps.exif_transpose(photo).convert("RGB")
 
 def photo_card(photo, story=False):
-    """Full-bleed news photo with only the Biz Pakistan logo and channel name."""
+    """Keep the original news photo clear; add only the Biz Pakistan logo/name."""
     width, height = (1080, 1920) if story else (1080, 1350)
     image = ImageOps.fit(prepare_photo(photo), (width, height), Image.Resampling.LANCZOS,
                          centering=(0.5, 0.42)).convert("RGBA")
