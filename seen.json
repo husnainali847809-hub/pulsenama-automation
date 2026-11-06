@@ -287,6 +287,22 @@
    "title": "Fact-check: Does viral video show attack on Pakistan's ambassador to Iran?",
    "updated": "2026-11-05T22:03:14+00:00"
   },
+  "f0b0a197f8bfc0e6d4d366a8b2e296271c269a1ce94a60598d54f6687ad8e8a5": {
+   "bucket": "breaking",
+   "category": "WORLD",
+   "created": "2026-11-06T07:34:51+00:00",
+   "feed": "queued",
+   "feed_due_at": "2026-11-06T07:49:51.270Z",
+   "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793950490/unique-news/f0b0a197f8bfc0e6d4d366a8-feed.jpg",
+   "feed_post_id": "6aed831b86fe9b83797deb50",
+   "headline": "UN Security Council Adopts Pakistan-Led Statement on Diplomacy",
+   "story": "queued",
+   "story_attempts": 1,
+   "story_due_at": "2026-11-06T07:49:51.270Z",
+   "story_post_id": "6aed831c07f945cca94aba0e",
+   "title": "UN Security Council adopts Pakistan-led statement urging diplomacy during wars",
+   "updated": "2026-11-06T07:34:53+00:00"
+  },
   "f20dbda8dc104dd0c34c6cdf4b14a942e0c51fdcdb5c20358617036589bb642c": {
    "bucket": "breaking",
    "category": "SPORTS",
