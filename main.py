@@ -496,8 +496,10 @@ def discover_free_models():
         return []
 
 def ask_openrouter(model, prompt):
+    # Free providers sometimes truncate structured responses. Give the model
+    # enough completion room; the validator below still enforces a strict schema.
     payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
-               "temperature": 0.2, "max_tokens": 900}
+               "temperature": 0.1, "max_tokens": 1400}
     try:
         response = SESSION.post(OPENROUTER_URL, headers=openrouter_headers(), json=payload, timeout=(15, 75))
     except (requests.Timeout, requests.ConnectionError) as exc:
@@ -545,9 +547,16 @@ def make_copy(article):
                 raise
             except Exception as exc:
                 last_error = exc
-                log.warning("OpenRouter %s attempt %d: %s", model, attempt + 1, redact(exc))
-                if attempt == 0 and time_left() > 100:
-                    time.sleep(3)
+                message = redact(exc)
+                log.warning("OpenRouter %s attempt %d: %s", model, attempt + 1, message)
+                # A 429 is a provider/model capacity signal. Repeating the same
+                # model immediately wastes the run budget, so move to the next
+                # fallback instead. Other malformed/truncated responses get
+                # one bounded retry.
+                if "HTTP 429" in message or "rate-limit" in message.lower() or "rate limited" in message.lower():
+                    break
+                if attempt == 0 and time_left() > 120:
+                    time.sleep(5)
                 else:
                     break
     raise AIError(f"All OpenRouter models failed: {redact(last_error)}")
