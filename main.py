@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PulseNama: RSS -> OpenRouter editorial review -> licensed photo or original brand graphic -> Cloudinary -> Buffer."""
 
-import os, re, sys, json, time, html, hashlib, logging, tempfile, random
+import os, re, sys, json, time, html, hashlib, logging, tempfile, random, base64
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -59,6 +59,8 @@ def gha(level, message):
 
 OPENROUTER_KEY = env("OPENROUTER_API_KEY")
 PEXELS_API_KEY = env("PEXELS_API_KEY")
+AI_HORDE_API_KEY = "0000000000"  # Anonymous public access; lowest queue priority.
+AI_HORDE_API = "https://aihorde.net/api/v2"
 OPENROUTER_MODEL = env("OPENROUTER_MODEL", "openrouter/free")
 FALLBACK_MODELS = [x.strip() for x in env("OPENROUTER_FALLBACK_MODELS").split(",") if x.strip()]
 BUFFER_KEY, BUFFER_CHANNEL = env("BUFFER_API_KEY"), env("BUFFER_CHANNEL_ID")
@@ -487,6 +489,109 @@ def validate_photo(data):
         raise ValueError("Image aspect ratio unsuitable.")
     return image
 
+def generate_news_image(article, copy, category):
+    """Generate an original 3D editorial illustration via the free, volunteer-run AI Horde."""
+    headline = clean(copy.get("headline") or article.get("title") or "Current news")[:180]
+    summary = clean(article.get("summary") or "")[:420]
+    category = clean(category or article.get("bucket") or "news")[:40]
+    prompt = (
+        "High quality cinematic 3D editorial illustration for a professional news channel. "
+        "Clearly a stylized 3D rendered illustration, never a real press photograph and never claiming to show the exact real event. "
+        "Realistic 3D materials, dramatic but credible lighting, professional composition, detailed environment. "
+        "Represent only the general subject; do not invent identifiable people, exact locations, flags, logos, readable signs, or numbers. "
+        "No identifiable real people. Accidents and disasters must be non-graphic and respectful. "
+        "Absolutely no text, letters, words, captions, labels, logos, watermarks, borders, or UI elements. "
+        f"Category: {category}. Headline: {headline}. Context: {summary}. "
+        "Create only the visual scene; PulseNama branding is overlaid separately."
+    )
+    headers = {
+        "apikey": AI_HORDE_API_KEY,
+        "Client-Agent": "PulseNama:1.0:https://github.com/husnainali847809-hub/pulsenama-automation",
+        "Content-Type": "application/json",
+    }
+    response = http(
+        "POST", f"{AI_HORDE_API}/generate/async", retries=1, timeout=(15, 45),
+        headers=headers,
+        json={
+            "prompt": prompt[:1800],
+            "params": {
+                "n": 1, "width": 512, "height": 512, "steps": 20,
+                "cfg_scale": 7.0, "sampler_name": "k_euler", "karras": True,
+            },
+            "nsfw": False, "censor_nsfw": True,
+        },
+    )
+    response.raise_for_status()
+    job = response.json()
+    job_id = job.get("id")
+    if not job_id:
+        raise RuntimeError("AI Horde did not return a generation job ID.")
+
+    # Anonymous requests are lowest priority; wait patiently, but do not hold a
+    # GitHub Actions runner forever.
+    deadline = time.monotonic() + min(720, max(60, time_left() - 180))
+    while time.monotonic() < deadline:
+        time.sleep(10)
+        check_response = http(
+            "GET", f"{AI_HORDE_API}/generate/check/{job_id}",
+            retries=1, timeout=(10, 30), headers=headers,
+        )
+        check_response.raise_for_status()
+        check = check_response.json()
+        if check.get("faulted"):
+            raise RuntimeError("AI Horde generation failed on the volunteer worker.")
+        if check.get("done"):
+            break
+        log.info("AI Horde image queued/processing (queue position: %s).", check.get("queue_position", "unknown"))
+    else:
+        try:
+            http("DELETE", f"{AI_HORDE_API}/generate/status/{job_id}",
+                 retries=0, timeout=(10, 20), headers=headers)
+        except Exception:
+            pass
+        raise RuntimeError("AI Horde anonymous image request timed out in the public queue.")
+
+    result_response = http(
+        "GET", f"{AI_HORDE_API}/generate/status/{job_id}",
+        retries=1, timeout=(10, 45), headers=headers,
+    )
+    result_response.raise_for_status()
+    result = result_response.json()
+    generations = result.get("generations") or []
+    if not generations or not generations[0].get("img"):
+        raise RuntimeError("AI Horde completed the job but returned no image.")
+    image_value = generations[0]["img"]
+    if isinstance(image_value, str) and image_value.startswith(("http://", "https://")):
+        image_response = http("GET", image_value, retries=1, timeout=(15, 60))
+        image_response.raise_for_status()
+        image_bytes = image_response.content
+    else:
+        if isinstance(image_value, str) and image_value.startswith("data:") and "," in image_value:
+            image_value = image_value.split(",", 1)[1]
+        try:
+            image_bytes = base64.b64decode(image_value, validate=True)
+        except (ValueError, TypeError) as exc:
+            raise RuntimeError("AI Horde returned an unreadable image payload.") from exc
+    # Anonymous Horde requests may be limited to 512x512; accept that size.
+    image = validate_photo_relaxed(image_bytes)
+    log.info("Generated original 3D editorial image through AI Horde (%dx%d).", *image.size)
+    return image
+
+def validate_photo_relaxed(data):
+    if not data or len(data) > 15 * 1024 * 1024:
+        raise ValueError("Generated image empty or over 15 MB.")
+    image = Image.open(BytesIO(data))
+    image.verify()
+    image = Image.open(BytesIO(data))
+    if image.format not in ("JPEG", "PNG", "WEBP"):
+        raise ValueError("Unsupported generated image format.")
+    image = ImageOps.exif_transpose(image).convert("RGB")
+    width, height = image.size
+    if width < 512 or height < 512 or width * height < 262144 or width > 12000 or height > 12000:
+        raise ValueError("Generated image dimensions unsuitable.")
+    if not 0.38 <= width / height <= 3.2:
+        raise ValueError("Generated image aspect ratio unsuitable.")
+    return image
 def get_news_photo(article):
     checked = set()
     for candidate in image_candidates(article):
@@ -813,7 +918,7 @@ def download_image(url):
 
 def make_graphic(photo, headline, category, story, key):
     if photo is None:
-        raise ValueError("A real, reusable news photo is required; text-only graphics are disabled.")
+        raise ValueError("A generated or otherwise validated source image is required; text-only graphics are disabled.")
     image = photo_card(photo, story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
@@ -822,8 +927,8 @@ def attempt_story(key, record, state, photo=None, due=None):
     record["story_attempts"] = int(record.get("story_attempts", 0)) + 1
     try:
         if photo is None:
-            if record.get("photo_mode") != "licensed" or not record.get("original_photo_url"):
-                raise RuntimeError("No reusable news photo is available for this story.")
+            if record.get("photo_mode") not in ("licensed", "ai_generated") or not record.get("original_photo_url"):
+                raise RuntimeError("No reusable source image is available for this story.")
             photo = download_image(record["original_photo_url"])
         path = make_graphic(photo, record.get("headline") or record.get("title", "PulseNama"),
                             record.get("category", "LATEST NEWS"), True, key)
@@ -936,17 +1041,15 @@ def process_article(article, state, stats):
         stats["unsuitable"] += 1
         return
 
-    # Publish only when a real news photo with established reuse rights is available.
-    # Otherwise skip this article instead of publishing a text-only graphic.
-    photo, photo_url = get_news_photo(article)
-    if not photo:
-        stats["photo_permission_skips"] += 1
-        log.warning("No reusable news photo found; skipping this article instead of publishing a graphic.")
-        return
-    photo_mode = "licensed"
-    log.info("Using a real photo with an established reuse basis.")
-
     category = copy["category"] or CATEGORY.get(article["bucket"], "LATEST NEWS")
+
+    # Generate a fresh, topic-matched 3D illustration for every approved news item.
+    # Keep an unbranded source copy in Cloudinary so Feed and Story can use the same scene.
+    photo = generate_news_image(article, copy, category)
+    source_path = save_jpeg(photo, f"{key[:16]}-source.jpg")
+    photo_url = upload_image(source_path, key, "source")
+    photo_mode = "ai_generated"
+    stats["ai_images_generated"] += 1
     feed_path = make_graphic(photo, copy["headline"], category, False, key)
     feed_url = upload_image(feed_path, key, "feed")
     credit = article.get("photo_credit") or {}
@@ -1010,7 +1113,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nImages use third-party photos only when reuse rights are established; otherwise an original brand graphic is used.\n")
+            summary.write("\nNews visuals are AI-generated 3D editorial illustrations, not photographs of the actual events. PulseNama branding is overlaid separately.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
@@ -1025,15 +1128,14 @@ def main():
     WORK_DIR = Path(tempfile.mkdtemp(prefix="pulsenama_"))
     stats = {"reviewed": 0, "unsuitable": 0, "feeds_queued": 0, "feed_unconfirmed": 0,
              "stories_queued": 0, "story_failures": 0, "openrouter_failures": 0,
-             "other_failures": 0, "photo_permission_skips": 0, "brand_graphics_used": 0}
+             "other_failures": 0, "ai_images_generated": 0}
     exit_code = 0
     try:
         init_clients()
         state = load_state()
         log.info("PulseNama | OpenRouter=%s | max posts=%d | stories=%s | history=%d",
                  OPENROUTER_MODEL, MAX_POSTS, ENABLE_STORIES, len(state["articles"]))
-        if not env("IMAGE_ALLOWED_DOMAINS"):
-            log.warning("IMAGE_ALLOWED_DOMAINS empty: third-party photos require explicit license metadata; brand graphics remain available.")
+        log.info("AI image generation enabled: free public AI Horde (anonymous queue).")
         retry_stories(state, stats)
         candidates = select_candidates(fetch_news(), state)
         log.info("%d fresh candidates after filtering.", len(candidates))
@@ -1048,8 +1150,6 @@ def main():
             try:
                 before = stats["feeds_queued"]
                 process_article(article, state, stats)
-                if stats["feeds_queued"] > before and state["articles"][article["key"]].get("photo_mode") == "brand_graphic":
-                    stats["brand_graphics_used"] += 1
                 consecutive_ai = 0
             except AIError as exc:
                 stats["openrouter_failures"] += 1
@@ -1077,9 +1177,9 @@ def main():
         gha("error", f"Unexpected error: {redact(exc)}")
         exit_code = 1
 
-    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d | brand graphics=%d",
-             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["unsuitable"],
-             stats["openrouter_failures"], stats["other_failures"], stats["brand_graphics_used"])
+    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | AI images generated=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d",
+             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["ai_images_generated"],
+             stats["unsuitable"], stats["openrouter_failures"], stats["other_failures"])
     write_summary(stats)
     return exit_code
 
