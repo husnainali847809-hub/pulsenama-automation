@@ -724,80 +724,13 @@ def prepare_photo(photo):
     image = ImageEnhance.Contrast(image).enhance(1.045)
     return image.filter(ImageFilter.UnsharpMask(radius=1, percent=75, threshold=4))
 
-def branded_card(headline, category, story=False):
-    """Create an original PulseNama graphic with no third-party photograph."""
+def photo_card(photo, story=False):
+    """Full-bleed news photo with only the PulseNama logo and channel name."""
     width, height = (1080, 1920) if story else (1080, 1350)
-    image = Image.new("RGB", (width, height), DARK)
+    image = ImageOps.fit(prepare_photo(photo), (width, height), Image.Resampling.LANCZOS,
+                         centering=(0.5, 0.42)).convert("RGBA")
     draw = ImageDraw.Draw(image)
-    # Subtle original geometric pattern.
-    for x in range(-height, width, 150):
-        draw.line((x, 0, x + height, height), fill=(22, 24, 30), width=3)
-    draw.rectangle((0, 0, width, 16), fill=GOLD)
-    draw_logo(draw, width - 55, 58 if story else 38)
-    top = 260 if story else 300
-    draw.rounded_rectangle((62, top, 62 + int(draw.textlength(category.upper(), font=font(24))) + 44, top + 60),
-                           radius=9, fill=GOLD)
-    draw.text((84, top + 14), category.upper(), font=font(24), fill=DARK)
-    # Decorative accent.
-    draw.rounded_rectangle((62, top + 125, 80, top + 360), radius=8, fill=RED)
-    max_lines = 7 if story else 5
-    hf, lines, size = fit_lines(draw, headline, width - 150, max_lines, 66 if story else 62, 38)
-    y = top + 155
-    for line in lines:
-        draw.text((112, y), line, font=hf, fill=WHITE)
-        y += int(size * 1.35)
-    lower = height - (250 if story else 170)
-    draw.rectangle((0, lower, width, height), fill=(5, 6, 9))
-    draw.rectangle((0, lower, width, lower + 6), fill=GOLD)
-    draw.text((60, lower + 52), "PULSENAMA", font=font(48 if story else 38), fill=GOLD)
-    draw.text((62, lower + 120), "Every Story. Every Update.", font=font(25, False), fill=GREY)
-    draw.text((62, lower + 175), "NEWS UPDATE", font=font(18), fill=WHITE)
-    return image
-
-def photo_card(photo, headline, category, story=False):
-    width, height = (1080, 1920) if story else (1080, 1350)
-    photo = prepare_photo(photo)
-    if story:
-        background = ImageOps.fit(photo, (width, height), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(30))
-        image = Image.blend(background, Image.new("RGB", (width, height), DARK), .68).convert("RGBA")
-        panel = ImageOps.fit(photo, (984, 790), Image.Resampling.LANCZOS, centering=(.5, .42))
-        image.paste(panel, (48, 330))
-        draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((48, 330, 1032, 1120), radius=28, outline=GOLD, width=5)
-        draw_logo(draw, width - 54, 86)
-        cat_y, text_y, max_lines = 185, 1225, 5
-        draw.rounded_rectangle((58, cat_y, 320, cat_y + 57), radius=9, fill=GOLD)
-        draw.text((78, cat_y + 13), category.upper()[:20], font=font(24), fill=DARK)
-        draw.rounded_rectangle((48, 1170, 1032, 1615), radius=24, fill=(5, 6, 9, 235))
-        hf, lines, size = fit_lines(draw, headline, 880, max_lines, 58, 35)
-        y = text_y
-        for line in lines:
-            draw.text((92, y), line, font=hf, fill=WHITE)
-            y += int(size * 1.25)
-        draw.text((58, 1710), "PULSENAMA", font=font(62), fill=GOLD)
-        draw.text((60, 1795), "Every Story. Every Update.", font=font(27, False), fill=GREY)
-        return image.convert("RGB")
-    image = ImageOps.fit(photo, (width, height), Image.Resampling.LANCZOS, centering=(.5, .42)).convert("RGBA")
-    shade = Image.new("RGBA", (width, 620), (0, 0, 0, 0))
-    pixels = shade.load()
-    for y in range(620):
-        alpha = int(225 * (y / 619) ** 1.35)
-        for x in range(width):
-            pixels[x, y] = (4, 5, 8, alpha)
-    image.alpha_composite(shade, (0, height - 620))
-    draw = ImageDraw.Draw(image)
-    draw_logo(draw, width - 55, 38)
-    cat = category.upper()[:24]
-    draw.rounded_rectangle((64, 805, 64 + int(draw.textlength(cat, font=font(22))) + 36, 854), radius=7, fill=GOLD)
-    draw.text((82, 815), cat, font=font(22), fill=DARK)
-    hf, lines, size = fit_lines(draw, headline, width - 125, 4, 62, 37)
-    y = max(875, 1190 - len(lines) * int(size * 1.24))
-    for line in lines:
-        draw.text((64, y), line, font=hf, fill=WHITE, stroke_width=2, stroke_fill=(0, 0, 0))
-        y += int(size * 1.24)
-    draw.rectangle((0, 1270, width, height), fill=DARK)
-    draw.rectangle((0, 1270, width, 1275), fill=GOLD)
-    draw.text((52, 1300), "PULSENAMA | EVERY STORY. EVERY UPDATE.", font=font(20), fill=GOLD)
+    draw_logo(draw, width - 38, 38 if not story else height - 100)
     return image.convert("RGB")
 
 def save_jpeg(image, filename):
