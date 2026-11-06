@@ -830,9 +830,14 @@ def fit_lines(draw, text, max_width, max_lines, start_size, min_size):
 
 def prepare_photo(photo):
     image = ImageOps.exif_transpose(photo).convert("RGB")
+    # Gentle professional enhancement: preserve the real news photograph while
+    # improving local contrast, colour separation and fine detail for a richer,
+    # dimensional (3D-like) appearance. Avoid aggressive filters or fake details.
+    image = ImageEnhance.Color(image).enhance(1.08)
     image = ImageEnhance.Brightness(image).enhance(1.025)
-    image = ImageEnhance.Contrast(image).enhance(1.045)
-    return image.filter(ImageFilter.UnsharpMask(radius=1, percent=75, threshold=4))
+    image = ImageEnhance.Contrast(image).enhance(1.10)
+    image = ImageEnhance.Sharpness(image).enhance(1.18)
+    return image.filter(ImageFilter.UnsharpMask(radius=1.4, percent=95, threshold=3))
 
 def photo_card(photo, story=False):
     """Full-bleed news photo with only the PulseNama logo and channel name."""
@@ -1043,13 +1048,21 @@ def process_article(article, state, stats):
 
     category = copy["category"] or CATEGORY.get(article["bucket"], "LATEST NEWS")
 
-    # Generate a fresh, topic-matched 3D illustration for every approved news item.
-    # Keep an unbranded source copy in Cloudinary so Feed and Story can use the same scene.
-    photo = generate_news_image(article, copy, category)
-    source_path = save_jpeg(photo, f"{key[:16]}-source.jpg")
+    # Use a real, topic-relevant photo with verified reuse rights. Never publish
+    # abstract AI colour blobs or a text-only fallback when no suitable photo exists.
+    photo, source_url = get_news_photo(article)
+    if photo is None:
+        state["articles"][key] = {"title": article["title"], "bucket": article["bucket"],
+                                  "feed": "no_image", "story": "skipped",
+                                  "created": iso(), "updated": iso()}
+        save_state(state)
+        stats["no_image"] += 1
+        log.warning("Article skipped: no suitable reusable news photo was found.")
+        return
+    source_path = save_jpeg(prepare_photo(photo), f"{key[:16]}-source.jpg")
     photo_url = upload_image(source_path, key, "source")
-    photo_mode = "ai_generated"
-    stats["ai_images_generated"] += 1
+    photo_mode = "licensed"
+    stats["source_images_used"] += 1
     feed_path = make_graphic(photo, copy["headline"], category, False, key)
     feed_url = upload_image(feed_path, key, "feed")
     credit = article.get("photo_credit") or {}
@@ -1113,7 +1126,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nNews visuals are AI-generated 3D editorial illustrations, not photographs of the actual events. PulseNama branding is overlaid separately.\n")
+            summary.write("\nNews visuals use verified reusable source photographs, lightly enhanced for clarity and depth. PulseNama branding is overlaid separately.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
@@ -1126,16 +1139,16 @@ def main():
         return 1
 
     WORK_DIR = Path(tempfile.mkdtemp(prefix="pulsenama_"))
-    stats = {"reviewed": 0, "unsuitable": 0, "feeds_queued": 0, "feed_unconfirmed": 0,
+    stats = {"reviewed": 0, "unsuitable": 0, "no_image": 0, "feeds_queued": 0, "feed_unconfirmed": 0,
              "stories_queued": 0, "story_failures": 0, "openrouter_failures": 0,
-             "other_failures": 0, "ai_images_generated": 0}
+             "other_failures": 0, "source_images_used": 0}
     exit_code = 0
     try:
         init_clients()
         state = load_state()
         log.info("PulseNama | OpenRouter=%s | max posts=%d | stories=%s | history=%d",
                  OPENROUTER_MODEL, MAX_POSTS, ENABLE_STORIES, len(state["articles"]))
-        log.info("AI image generation enabled: free public AI Horde (anonymous queue).")
+        log.info("Image mode: verified relevant source photos with professional depth/clarity enhancement; no AI-generated images.")
         retry_stories(state, stats)
         candidates = select_candidates(fetch_news(), state)
         log.info("%d fresh candidates after filtering.", len(candidates))
@@ -1177,9 +1190,9 @@ def main():
         gha("error", f"Unexpected error: {redact(exc)}")
         exit_code = 1
 
-    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | AI images generated=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d",
-             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["ai_images_generated"],
-             stats["unsuitable"], stats["openrouter_failures"], stats["other_failures"])
+    log.info("Finished: Feed queued=%d | Story queued=%d | Story failures=%d | Source photos used=%d | No reusable photo=%d | Unsuitable=%d | OpenRouter failures=%d | other failures=%d",
+             stats["feeds_queued"], stats["stories_queued"], stats["story_failures"], stats["source_images_used"],
+             stats["no_image"], stats["unsuitable"], stats["openrouter_failures"], stats["other_failures"])
     write_summary(stats)
     return exit_code
 
