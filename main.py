@@ -306,49 +306,52 @@ class ImageMetaParser(HTMLParser):
                 self.licenses.append(attrs["href"])
 
 def openverse_image_candidates(article):
-    """Find openly licensed, commercially reusable landscape photos via Openverse."""
+    """Find commercially reusable photographs and report upstream errors clearly."""
     query = clean(article.get("title") or "")[:180]
     if not query:
         return []
     try:
-        response = http(
-            "GET", "https://api.openverse.org/v1/images/",
-            retries=1, timeout=(10, 20),
-            params={
-                "q": query,
-                "license_type": "commercial",
-                "category": "photograph",
-                "aspect_ratio": "wide",
-                "size": "large",
-                "page_size": 10,
-                "filter_dead": "true",
-                "mature": "false"
-            }
+        response = SESSION.get(
+            "https://api.openverse.org/v1/images/",
+            params={"q": query, "license_type": "commercial", "category": "photograph",
+                    "aspect_ratio": "wide", "size": "large", "page_size": 10,
+                    "filter_dead": "true", "mature": "false"},
+            headers={"Accept": "application/json",
+                     "User-Agent": "PulseNamaPublisher/6.2 (openly licensed news photo search)"},
+            timeout=(10, 25)
         )
-        response.raise_for_status()
-        payload = response.json()
+        content_type = response.headers.get("Content-Type", "")
+        if response.status_code != 200:
+            log.warning("Openverse HTTP %s (%s): %s", response.status_code, content_type,
+                        redact(response.text[:180]).replace("\\n", " "))
+            return []
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            log.warning("Openverse invalid JSON (HTTP %s, %s): %s; body=%s",
+                        response.status_code, content_type, redact(exc),
+                        redact(response.text[:180]).replace("\\n", " "))
+            return []
         candidates = []
         for item in payload.get("results", []):
             image_url = item.get("url") or ""
             width, height = int(item.get("width") or 0), int(item.get("height") or 0)
             license_code = clean(item.get("license") or "")
-            license_url = item.get("license_url") or ""
-            # Keep a second local check even though the API filters for commercial use.
             if (not image_url.startswith("https://") or width < 1000 or height < 600
                     or width / max(height, 1) < 1.15 or not reusable_license(license_code)):
                 continue
             candidates.append({
-                "url": image_url,
-                "source": "Openverse",
-                "license": license_code,
-                "license_name": license_code.upper(),
-                "license_url": license_url,
+                "url": image_url, "source": "Openverse", "license": license_code,
+                "license_name": license_code.upper(), "license_url": item.get("license_url") or "",
                 "artist": clean(item.get("creator") or ""),
                 "artist_url": item.get("creator_url") or "",
                 "source_page": item.get("foreign_landing_url") or item.get("detail_url") or ""
             })
         log.info("Openverse returned %d suitable commercial-use image candidates.", len(candidates))
         return candidates
+    except (requests.Timeout, requests.ConnectionError) as exc:
+        log.warning("Openverse connection failed: %s", redact(exc))
+        return []
     except Exception as exc:
         log.warning("Openverse image search unavailable: %s", redact(exc))
         return []
@@ -455,15 +458,17 @@ def allowed_domain(url):
     return any(host == domain or host.endswith("." + domain) for domain in domains)
 
 def reusable_license(value):
-    value = (value or "").lower().replace("cc-", "cc ")
-    # Non-commercial and no-derivatives licences are not suitable for this
-    # automated, potentially monetized news workflow.
-    if re.search(r"\b(nc|non[- ]commercial|nd|no[- ]derivatives)\b", value):
+    value = (value or "").strip().lower()
+    # Openverse compact codes: by, by-sa, cc0 and pdm permit commercial reuse.
+    if value in {"by", "by-sa", "cc0", "pdm", "public domain", "public domain mark"}:
+        return True
+    normalized = value.replace("cc-", "cc ").replace("_", " ")
+    if re.search(r"\b(nc|non[- ]commercial|nd|no[- ]derivatives)\b", normalized):
         return False
     return bool(re.search(
         r"public[\s-]?domain|\bcc0\b|\bcc by(?:\s|$|[-/])|\bcc by-sa\b|"
         r"creative commons attribution(?:-sharealike)?",
-        value
+        normalized
     ))
 
 def validate_photo(data):
@@ -724,80 +729,13 @@ def prepare_photo(photo):
     image = ImageEnhance.Contrast(image).enhance(1.045)
     return image.filter(ImageFilter.UnsharpMask(radius=1, percent=75, threshold=4))
 
-def branded_card(headline, category, story=False):
-    """Create an original PulseNama graphic with no third-party photograph."""
+def photo_card(photo, story=False):
+    """Full-bleed news photo with only the PulseNama logo and channel name."""
     width, height = (1080, 1920) if story else (1080, 1350)
-    image = Image.new("RGB", (width, height), DARK)
+    image = ImageOps.fit(prepare_photo(photo), (width, height), Image.Resampling.LANCZOS,
+                         centering=(0.5, 0.42)).convert("RGBA")
     draw = ImageDraw.Draw(image)
-    # Subtle original geometric pattern.
-    for x in range(-height, width, 150):
-        draw.line((x, 0, x + height, height), fill=(22, 24, 30), width=3)
-    draw.rectangle((0, 0, width, 16), fill=GOLD)
-    draw_logo(draw, width - 55, 58 if story else 38)
-    top = 260 if story else 300
-    draw.rounded_rectangle((62, top, 62 + int(draw.textlength(category.upper(), font=font(24))) + 44, top + 60),
-                           radius=9, fill=GOLD)
-    draw.text((84, top + 14), category.upper(), font=font(24), fill=DARK)
-    # Decorative accent.
-    draw.rounded_rectangle((62, top + 125, 80, top + 360), radius=8, fill=RED)
-    max_lines = 7 if story else 5
-    hf, lines, size = fit_lines(draw, headline, width - 150, max_lines, 66 if story else 62, 38)
-    y = top + 155
-    for line in lines:
-        draw.text((112, y), line, font=hf, fill=WHITE)
-        y += int(size * 1.35)
-    lower = height - (250 if story else 170)
-    draw.rectangle((0, lower, width, height), fill=(5, 6, 9))
-    draw.rectangle((0, lower, width, lower + 6), fill=GOLD)
-    draw.text((60, lower + 52), "PULSENAMA", font=font(48 if story else 38), fill=GOLD)
-    draw.text((62, lower + 120), "Every Story. Every Update.", font=font(25, False), fill=GREY)
-    draw.text((62, lower + 175), "NEWS UPDATE", font=font(18), fill=WHITE)
-    return image
-
-def photo_card(photo, headline, category, story=False):
-    width, height = (1080, 1920) if story else (1080, 1350)
-    photo = prepare_photo(photo)
-    if story:
-        background = ImageOps.fit(photo, (width, height), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(30))
-        image = Image.blend(background, Image.new("RGB", (width, height), DARK), .68).convert("RGBA")
-        panel = ImageOps.fit(photo, (984, 790), Image.Resampling.LANCZOS, centering=(.5, .42))
-        image.paste(panel, (48, 330))
-        draw = ImageDraw.Draw(image)
-        draw.rounded_rectangle((48, 330, 1032, 1120), radius=28, outline=GOLD, width=5)
-        draw_logo(draw, width - 54, 86)
-        cat_y, text_y, max_lines = 185, 1225, 5
-        draw.rounded_rectangle((58, cat_y, 320, cat_y + 57), radius=9, fill=GOLD)
-        draw.text((78, cat_y + 13), category.upper()[:20], font=font(24), fill=DARK)
-        draw.rounded_rectangle((48, 1170, 1032, 1615), radius=24, fill=(5, 6, 9, 235))
-        hf, lines, size = fit_lines(draw, headline, 880, max_lines, 58, 35)
-        y = text_y
-        for line in lines:
-            draw.text((92, y), line, font=hf, fill=WHITE)
-            y += int(size * 1.25)
-        draw.text((58, 1710), "PULSENAMA", font=font(62), fill=GOLD)
-        draw.text((60, 1795), "Every Story. Every Update.", font=font(27, False), fill=GREY)
-        return image.convert("RGB")
-    image = ImageOps.fit(photo, (width, height), Image.Resampling.LANCZOS, centering=(.5, .42)).convert("RGBA")
-    shade = Image.new("RGBA", (width, 620), (0, 0, 0, 0))
-    pixels = shade.load()
-    for y in range(620):
-        alpha = int(225 * (y / 619) ** 1.35)
-        for x in range(width):
-            pixels[x, y] = (4, 5, 8, alpha)
-    image.alpha_composite(shade, (0, height - 620))
-    draw = ImageDraw.Draw(image)
-    draw_logo(draw, width - 55, 38)
-    cat = category.upper()[:24]
-    draw.rounded_rectangle((64, 805, 64 + int(draw.textlength(cat, font=font(22))) + 36, 854), radius=7, fill=GOLD)
-    draw.text((82, 815), cat, font=font(22), fill=DARK)
-    hf, lines, size = fit_lines(draw, headline, width - 125, 4, 62, 37)
-    y = max(875, 1190 - len(lines) * int(size * 1.24))
-    for line in lines:
-        draw.text((64, y), line, font=hf, fill=WHITE, stroke_width=2, stroke_fill=(0, 0, 0))
-        y += int(size * 1.24)
-    draw.rectangle((0, 1270, width, height), fill=DARK)
-    draw.rectangle((0, 1270, width, 1275), fill=GOLD)
-    draw.text((52, 1300), "PULSENAMA | EVERY STORY. EVERY UPDATE.", font=font(20), fill=GOLD)
+    draw_logo(draw, width - 38, 38 if not story else height - 100)
     return image.convert("RGB")
 
 def save_jpeg(image, filename):
@@ -874,16 +812,18 @@ def download_image(url):
     return validate_photo(response.content)
 
 def make_graphic(photo, headline, category, story, key):
-    image = photo_card(photo, headline, category, story) if photo else branded_card(headline, category, story)
+    if photo is None:
+        raise ValueError("A real, reusable news photo is required; text-only graphics are disabled.")
+    image = photo_card(photo, story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
 
 def attempt_story(key, record, state, photo=None, due=None):
     record["story_attempts"] = int(record.get("story_attempts", 0)) + 1
     try:
-        if photo is None and record.get("photo_mode") == "licensed":
-            if not record.get("original_photo_url"):
-                raise RuntimeError("Original licensed image URL unavailable.")
+        if photo is None:
+            if record.get("photo_mode") != "licensed" or not record.get("original_photo_url"):
+                raise RuntimeError("No reusable news photo is available for this story.")
             photo = download_image(record["original_photo_url"])
         path = make_graphic(photo, record.get("headline") or record.get("title", "PulseNama"),
                             record.get("category", "LATEST NEWS"), True, key)
@@ -996,14 +936,15 @@ def process_article(article, state, stats):
         stats["unsuitable"] += 1
         return
 
-    # Use a third-party news photo only when reuse rights are established.
-    # Otherwise generate a PulseNama-owned typographic graphic with no copied photo.
+    # Publish only when a real news photo with established reuse rights is available.
+    # Otherwise skip this article instead of publishing a text-only graphic.
     photo, photo_url = get_news_photo(article)
-    photo_mode = "licensed" if photo else "brand_graphic"
-    if photo:
-        log.info("Using a photo with an established reuse basis.")
-    else:
-        log.info("No reusable photo found; creating an original PulseNama branded graphic instead.")
+    if not photo:
+        stats["photo_permission_skips"] += 1
+        log.warning("No reusable news photo found; skipping this article instead of publishing a graphic.")
+        return
+    photo_mode = "licensed"
+    log.info("Using a real photo with an established reuse basis.")
 
     category = copy["category"] or CATEGORY.get(article["bucket"], "LATEST NEWS")
     feed_path = make_graphic(photo, copy["headline"], category, False, key)
