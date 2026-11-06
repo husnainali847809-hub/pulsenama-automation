@@ -334,6 +334,24 @@
       "story": "skipped",
       "created": "2026-11-06T10:33:05+00:00",
       "updated": "2026-11-06T10:33:05+00:00"
+    },
+    "a161ec6b739e5eaa0400b132124e93a4f1caa394bc72828f2ae1ff10cb297d63": {
+      "title": "Canada denies study permit to Afghan girl on scholarship",
+      "headline": "Canada denies study permit to Afghan girl on scholarship",
+      "bucket": "breaking",
+      "category": "EDUCATION",
+      "feed": "queued",
+      "feed_post_id": "6aedaf1d3996b95e1872112b",
+      "feed_due_at": "2026-11-06T10:57:37.698Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793961757/pulsenama/a161ec6b739e5eaa0400b132-feed.jpg",
+      "photo_mode": "brand_graphic",
+      "original_photo_url": null,
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aedaf1ebd8bdbf0d0d8f03b",
+      "created": "2026-11-06T10:42:38+00:00",
+      "updated": "2026-11-06T10:42:38+00:00",
+      "story_due_at": "2026-11-06T10:57:37.698Z"
     }
   },
   "version": 2
