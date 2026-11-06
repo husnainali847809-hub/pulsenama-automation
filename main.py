@@ -30,7 +30,7 @@ def env_bool(k, default=True):
     v = env(k).lower()
     return default if not v else v in ("1", "true", "yes", "on")
 
-SECRET_NAMES = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET")
+SECRET_NAMES = ("OPENROUTER_API_KEY", "BUFFER_API_KEY", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "PEXELS_API_KEY")
 
 def redact(value):
     value = str(value)
@@ -58,6 +58,7 @@ def gha(level, message):
         print(f"::{level}::{redact(message).replace(chr(10), ' ')[:800]}", flush=True)
 
 OPENROUTER_KEY = env("OPENROUTER_API_KEY")
+PEXELS_API_KEY = env("PEXELS_API_KEY")
 OPENROUTER_MODEL = env("OPENROUTER_MODEL", "openrouter/free")
 FALLBACK_MODELS = [x.strip() for x in env("OPENROUTER_FALLBACK_MODELS").split(",") if x.strip()]
 BUFFER_KEY, BUFFER_CHANNEL = env("BUFFER_API_KEY"), env("BUFFER_CHANNEL_ID")
@@ -304,6 +305,46 @@ class ImageMetaParser(HTMLParser):
             if "license" in rel and attrs.get("href"):
                 self.licenses.append(attrs["href"])
 
+def pexels_image_candidates(article):
+    """Find a relevant, reusable landscape photo through the official Pexels API."""
+    if not PEXELS_API_KEY:
+        return []
+    query = clean(article.get("title") or "")[:180]
+    if not query:
+        return []
+    try:
+        response = http(
+            "GET", "https://api.pexels.com/v1/search",
+            retries=1, timeout=(10, 20),
+            headers={"Authorization": PEXELS_API_KEY},
+            params={"query": query, "per_page": 10, "orientation": "landscape", "size": "large"}
+        )
+        response.raise_for_status()
+        payload = response.json()
+        candidates = []
+        for photo in payload.get("photos", []):
+            src = photo.get("src") or {}
+            image_url = src.get("large2x") or src.get("large") or src.get("original")
+            if not image_url or not image_url.startswith("https://"):
+                continue
+            width, height = int(photo.get("width") or 0), int(photo.get("height") or 0)
+            if width < 1000 or height < 600 or width / max(height, 1) < 1.15:
+                continue
+            candidates.append({
+                "url": image_url,
+                "source": "Pexels",
+                "license": "Pexels License",
+                "license_name": "Pexels License",
+                "license_url": "https://www.pexels.com/license/",
+                "artist": clean(photo.get("photographer") or ""),
+                "source_page": photo.get("url") or ""
+            })
+        log.info("Pexels returned %d suitable image candidates.", len(candidates))
+        return candidates
+    except Exception as exc:
+        log.warning("Pexels image search unavailable: %s", redact(exc))
+        return []
+
 def image_candidates(article):
     results = list(article.get("image_candidates", []))
     try:
@@ -317,6 +358,10 @@ def image_candidates(article):
                 results.append({"url": urljoin(response.url, url), "source": source, "license": clean(rights)})
     except Exception as exc:
         log.info("Article image lookup failed: %s", redact(exc))
+
+    # Pexels photos are covered by the Pexels License for reuse in this workflow.
+    # API results include the photographer and source page for optional attribution.
+    results.extend(pexels_image_candidates(article))
 
     # Wikimedia Commons: use only licences that permit redistribution and editing.
     # CC BY-NC and CC BY-ND are deliberately excluded.
@@ -396,7 +441,9 @@ def get_news_photo(article):
         checked.add(url)
         # A domain allowlist is the operator's declaration of actual reuse rights.
         # Do not add publisher domains unless permission has genuinely been obtained.
-        if not (allowed_domain(url) or reusable_license(candidate.get("license", ""))):
+        pexels_licensed = (candidate.get("source") == "Pexels"
+                           and candidate.get("license") == "Pexels License")
+        if not (pexels_licensed or allowed_domain(url) or reusable_license(candidate.get("license", ""))):
             log.info("Image skipped: reuse rights not established (%s).", urlparse(url).netloc)
             continue
         filename = urlparse(url).path.lower().rsplit("/", 1)[-1]
@@ -412,7 +459,8 @@ def get_news_photo(article):
                 "artist": candidate.get("artist", ""),
                 "license": candidate.get("license_name") or candidate.get("license", ""),
                 "license_url": candidate.get("license_url", ""),
-                "source": candidate.get("source", "")
+                "source": candidate.get("source", ""),
+                "source_page": candidate.get("source_page", "")
             }
             log.info("Reusable image validated: %dx%d (%s)", *photo.size, urlparse(url).netloc)
             return photo, url
@@ -496,8 +544,10 @@ def discover_free_models():
         return []
 
 def ask_openrouter(model, prompt):
+    # Free providers sometimes truncate structured responses. Give the model
+    # enough completion room; the validator below still enforces a strict schema.
     payload = {"model": model, "messages": [{"role": "user", "content": prompt}],
-               "temperature": 0.2, "max_tokens": 900}
+               "temperature": 0.1, "max_tokens": 1400}
     try:
         response = SESSION.post(OPENROUTER_URL, headers=openrouter_headers(), json=payload, timeout=(15, 75))
     except (requests.Timeout, requests.ConnectionError) as exc:
@@ -545,9 +595,16 @@ def make_copy(article):
                 raise
             except Exception as exc:
                 last_error = exc
-                log.warning("OpenRouter %s attempt %d: %s", model, attempt + 1, redact(exc))
-                if attempt == 0 and time_left() > 100:
-                    time.sleep(3)
+                message = redact(exc)
+                log.warning("OpenRouter %s attempt %d: %s", model, attempt + 1, message)
+                # A 429 is a provider/model capacity signal. Repeating the same
+                # model immediately wastes the run budget, so move to the next
+                # fallback instead. Other malformed/truncated responses get
+                # one bounded retry.
+                if "HTTP 429" in message or "rate-limit" in message.lower() or "rate limited" in message.lower():
+                    break
+                if attempt == 0 and time_left() > 120:
+                    time.sleep(5)
                 else:
                     break
     raise AIError(f"All OpenRouter models failed: {redact(last_error)}")
@@ -909,6 +966,8 @@ def process_article(article, state, stats):
             image_credit = "\n\nImage credit: " + " — ".join(credit_parts)
             if credit.get("license_url"):
                 image_credit += " (" + credit["license_url"] + ")"
+            if credit.get("source_page"):
+                image_credit += "\nPhoto: " + credit["source_page"]
     feed_text = f'{copy["headline"]}\n\n{copy["caption"]}\n\nSource: {article["link"]}{image_credit}\n\n{" ".join(copy["hashtags"])}'
     due = (now() + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     try:
