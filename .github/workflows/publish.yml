@@ -1,5 +1,5 @@
 
-name: PulseNama Auto Publisher
+name: Biz Pakistan Auto Publisher
 
 on:
   # Five daily runs: 09:00, 12:00, 15:00, 18:00 and 21:00 Pakistan time (UTC+5).
@@ -42,7 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run PulseNama Publisher
+      - name: Run Biz Pakistan Publisher
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
