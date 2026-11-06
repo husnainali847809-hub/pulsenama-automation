@@ -961,13 +961,21 @@ def process_article(article, state, stats):
     credit = article.get("photo_credit") or {}
     image_credit = ""
     if photo and credit:
-        credit_parts = [part for part in (credit.get("artist"), credit.get("license")) if part]
-        if credit_parts:
-            image_credit = "\n\nImage credit: " + " — ".join(credit_parts)
-            if credit.get("license_url"):
-                image_credit += " (" + credit["license_url"] + ")"
+        if credit.get("source") == "Pexels":
+            image_credit = "\n\nPhotos provided by Pexels. "
+            if credit.get("artist"):
+                image_credit += "Photo by " + credit["artist"] + " on Pexels. "
             if credit.get("source_page"):
-                image_credit += "\nPhoto: " + credit["source_page"]
+                image_credit += credit["source_page"] + " "
+            image_credit += "(Pexels License: https://www.pexels.com/license/)"
+        else:
+            credit_parts = [part for part in (credit.get("artist"), credit.get("license")) if part]
+            if credit_parts:
+                image_credit = "\n\nImage credit: " + " — ".join(credit_parts)
+                if credit.get("license_url"):
+                    image_credit += " (" + credit["license_url"] + ")"
+                if credit.get("source_page"):
+                    image_credit += "\nPhoto: " + credit["source_page"]
     feed_text = f'{copy["headline"]}\n\n{copy["caption"]}\n\nSource: {article["link"]}{image_credit}\n\n{" ".join(copy["hashtags"])}'
     due = (now() + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     try:
