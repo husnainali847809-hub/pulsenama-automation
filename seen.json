@@ -352,6 +352,24 @@
       "created": "2026-11-06T10:42:38+00:00",
       "updated": "2026-11-06T10:42:38+00:00",
       "story_due_at": "2026-11-06T10:57:37.698Z"
+    },
+    "47205a7d8157570a0ffb21eacc193778f9d423f44119da3f5eb39f9ed861f9e8": {
+      "title": "Pakistan's Prime Minister Shehbaz Sharif stands with Pakistan's Chief of Army Staff Field Marshal Asim Munir prior to a quadrilateral meeting between the United States, Iran, Pakistan and Qatar",
+      "headline": "PM Shehbaz Sharif meets COAS Asim Munir before quadrilateral US‑Iran‑Pakistan‑Qatar meeting",
+      "bucket": "breaking",
+      "category": "BREAKING",
+      "feed": "queued",
+      "feed_post_id": "6aedbf0b2d7b46c85107999f",
+      "feed_due_at": "2026-11-06T12:05:34.516Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793965834/pulsenama/47205a7d8157570a0ffb21ea-feed.jpg",
+      "photo_mode": "brand_graphic",
+      "original_photo_url": null,
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aedbf0cc60945d64498555e",
+      "created": "2026-11-06T11:50:35+00:00",
+      "updated": "2026-11-06T11:50:37+00:00",
+      "story_due_at": "2026-11-06T12:05:34.516Z"
     }
   },
   "version": 2
