@@ -1,14 +1,14 @@
-# PulseNama Auto Publisher
+# Biz Pakistan Auto Publisher
 
 Automated news review and publishing to Facebook through Buffer.
 
 ## News image policy
 
-PulseNama uses a relevant source photograph from the news item or a verified reusable image source. It does not generate abstract AI images or publish random images just to fill a post.
+Biz Pakistan uses a relevant source photograph from the news item or a verified reusable image source. It does not generate abstract AI images or publish random images just to fill a post.
 
 Each selected photo receives gentle professional enhancement for clearer detail, natural contrast, and richer depth. This creates a more dimensional, polished appearance while preserving the original photograph. It is not converted into a literal 3D render and does not invent details about a real event.
 
-The only overlay is the PulseNama logo and channel name. No headline, breaking-news label, category, slogan, or extra text is added. Feed and Story use the same source scene with different crops.
+The only overlay is the Biz Pakistan logo and channel name. No headline, breaking-news label, category, slogan, or extra text is added. Feed and Story use the same source scene with different crops.
 
 If a suitable photo with verified reuse rights cannot be found, that news item is skipped rather than publishing a poor-quality or unrelated visual.
 
