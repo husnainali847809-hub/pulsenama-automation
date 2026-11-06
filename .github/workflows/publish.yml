@@ -1,8 +1,8 @@
+
 name: Unique News Publisher
 
 on:
   schedule:
-    # Every 3 hours (UTC). Change as you like.
     - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
@@ -14,7 +14,6 @@ on:
 permissions:
   contents: write
 
-# Never run two publishers at the same time (protects seen.json)
 concurrency:
   group: unique-news-publisher
   cancel-in-progress: false
@@ -44,15 +43,12 @@ jobs:
 
       - name: Run Unique News
         env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          AI_HORDE_API_KEY: ${{ secrets.AI_HORDE_API_KEY }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-          # Works whether you stored these as Secrets or as Variables
-          GEMINI_TEXT_MODEL: ${{ secrets.GEMINI_TEXT_MODEL || vars.GEMINI_TEXT_MODEL }}
           MAX_ARTICLES_PER_RUN: ${{ inputs.max_articles || secrets.MAX_ARTICLES_PER_RUN || vars.MAX_ARTICLES_PER_RUN || '1' }}
           PYTHONUNBUFFERED: "1"
         run: python main.py
