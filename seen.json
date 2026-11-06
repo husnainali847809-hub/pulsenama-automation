@@ -514,6 +514,24 @@
       "created": "2026-11-06T13:40:02+00:00",
       "updated": "2026-11-06T13:40:03+00:00",
       "story_due_at": "2026-11-06T13:55:01.615Z"
+    },
+    "d6d08fce149b061c44822cf9fcb84af2d90c1523ec3dd9b030cee88ea41f75e9": {
+      "title": "US judge blocks planned deportations of Afghans through Pakistan",
+      "headline": "US judge ne Afghans ki deportations rokne ka hukm diya",
+      "bucket": "breaking",
+      "category": "WORLD",
+      "feed": "queued",
+      "feed_post_id": "6aeddcf6b47fa2682109b179",
+      "feed_due_at": "2026-11-06T14:13:14.423Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793973494/bizpakistan/d6d08fce149b061c44822cf9-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793973493/bizpakistan/d6d08fce149b061c44822cf9-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aeddcf7fd32b2a5bf11e8af",
+      "created": "2026-11-06T13:58:14+00:00",
+      "updated": "2026-11-06T13:58:15+00:00",
+      "story_due_at": "2026-11-06T14:13:14.423Z"
     }
   },
   "version": 2
