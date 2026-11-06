@@ -1,13 +1,14 @@
 
-name: Unique News Publisher
+name: PulseNama Auto Publisher
 
 on:
+  # Five daily runs: 09:00, 12:00, 15:00, 18:00 and 21:00 Pakistan time (UTC+5).
   schedule:
-    - cron: "17 */3 * * *"
+    - cron: "0 4,7,10,13,16 * * *"
   workflow_dispatch:
     inputs:
       max_articles:
-        description: "Max articles to queue in this run (1-5)"
+        description: "Max posts to queue in this run (1-5)"
         required: false
         default: "1"
 
