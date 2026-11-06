@@ -4,25 +4,24 @@ Automated news review and publishing to Facebook through Buffer.
 
 ## AI-generated news images
 
-PulseNama generates a new topic-matched 3D editorial illustration for each approved news item using Cloudflare Workers AI FLUX.1 schnell. The illustration is not represented as a real photograph of the event. The publisher overlays only the PulseNama logo and channel name; no headline or extra text is placed on the image. Feed and Story use the same generated scene with different crops.
+PulseNama generates a new topic-matched 3D editorial illustration for every approved news item using **AI Horde**, a free, community-powered image-generation network run by volunteer workers. It uses anonymous public access, so no Cloudflare account, image API key, or credit card is required.
 
-### Required Cloudflare setup (free tier available)
+The image is an editorial illustration, not a real photograph of the actual event. PulseNama overlays only its logo and channel name; no headline or extra text is placed on the image. Feed and Story use the same generated scene with different crops.
 
-1. Create or sign in to a Cloudflare account: https://dash.cloudflare.com/
-2. Open Workers & Pages, then Workers AI, then Use REST API.
-3. Create a Workers AI API token with Workers AI Read and Workers AI Edit permissions.
-4. Copy your Cloudflare Account ID from the Workers AI page.
-5. In this GitHub repository open Settings, Secrets and variables, Actions, then New repository secret.
-6. Add these two secrets (never put their values in source code or chat):
-   - CLOUDFLARE_ACCOUNT_ID — your Cloudflare Account ID
-   - CLOUDFLARE_API_TOKEN — the Workers AI API token
-7. Run Actions, PulseNama Auto Publisher, Run workflow.
+### Important free-service limitations
 
-Cloudflare Workers AI currently includes a daily free allocation on its Free plan. Usage above the free allocation requires the Paid plan. Check current pricing before increasing volume: https://developers.cloudflare.com/workers-ai/platform/pricing/
+- Anonymous requests have the lowest queue priority and can take a while.
+- The public service may be busy or temporarily unavailable.
+- Anonymous generation is requested at 512×512.
+- If generation fails or times out, the story is skipped: the publisher does not use a random stock photo or a text-only fallback.
+- The service is provided by volunteer workers; availability and quality are not guaranteed.
 
-If image generation is not configured or fails, the article is not published with a random stock photo or a text-only fallback. Fix the Cloudflare configuration and retry the workflow.
+Official links:
+- Generate images / learn about the queue: https://api.stablehorde.net/docs/image/
+- API documentation: https://aihorde.net/api/
+- Live service status: https://aihorde.net/
 
-## Other required GitHub Actions secrets
+## Required GitHub Actions secrets
 
 - OPENROUTER_API_KEY
 - BUFFER_API_KEY
@@ -31,4 +30,4 @@ If image generation is not configured or fails, the article is not published wit
 - CLOUDINARY_API_KEY
 - CLOUDINARY_API_SECRET
 
-Optional: PEXELS_API_KEY is retained for legacy photo lookup code, but the current publishing flow uses generated images instead.
+Optional: PEXELS_API_KEY is retained for legacy photo lookup code, but the current publishing flow uses AI-generated illustrations instead.
