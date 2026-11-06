@@ -59,8 +59,6 @@ def gha(level, message):
 
 OPENROUTER_KEY = env("OPENROUTER_API_KEY")
 PEXELS_API_KEY = env("PEXELS_API_KEY")
-AI_HORDE_API_KEY = "0000000000"  # Anonymous public access; lowest queue priority.
-AI_HORDE_API = "https://aihorde.net/api/v2"
 OPENROUTER_MODEL = env("OPENROUTER_MODEL", "openrouter/free")
 FALLBACK_MODELS = [x.strip() for x in env("OPENROUTER_FALLBACK_MODELS").split(",") if x.strip()]
 BUFFER_KEY, BUFFER_CHANNEL = env("BUFFER_API_KEY"), env("BUFFER_CHANNEL_ID")
@@ -489,109 +487,6 @@ def validate_photo(data):
         raise ValueError("Image aspect ratio unsuitable.")
     return image
 
-def generate_news_image(article, copy, category):
-    """Generate an original 3D editorial illustration via the free, volunteer-run AI Horde."""
-    headline = clean(copy.get("headline") or article.get("title") or "Current news")[:180]
-    summary = clean(article.get("summary") or "")[:420]
-    category = clean(category or article.get("bucket") or "news")[:40]
-    prompt = (
-        "High quality cinematic 3D editorial illustration for a professional news channel. "
-        "Clearly a stylized 3D rendered illustration, never a real press photograph and never claiming to show the exact real event. "
-        "Realistic 3D materials, dramatic but credible lighting, professional composition, detailed environment. "
-        "Represent only the general subject; do not invent identifiable people, exact locations, flags, logos, readable signs, or numbers. "
-        "No identifiable real people. Accidents and disasters must be non-graphic and respectful. "
-        "Absolutely no text, letters, words, captions, labels, logos, watermarks, borders, or UI elements. "
-        f"Category: {category}. Headline: {headline}. Context: {summary}. "
-        "Create only the visual scene; PulseNama branding is overlaid separately."
-    )
-    headers = {
-        "apikey": AI_HORDE_API_KEY,
-        "Client-Agent": "PulseNama:1.0:https://github.com/husnainali847809-hub/pulsenama-automation",
-        "Content-Type": "application/json",
-    }
-    response = http(
-        "POST", f"{AI_HORDE_API}/generate/async", retries=1, timeout=(15, 45),
-        headers=headers,
-        json={
-            "prompt": prompt[:1800],
-            "params": {
-                "n": 1, "width": 512, "height": 512, "steps": 20,
-                "cfg_scale": 7.0, "sampler_name": "k_euler", "karras": True,
-            },
-            "nsfw": False, "censor_nsfw": True,
-        },
-    )
-    response.raise_for_status()
-    job = response.json()
-    job_id = job.get("id")
-    if not job_id:
-        raise RuntimeError("AI Horde did not return a generation job ID.")
-
-    # Anonymous requests are lowest priority; wait patiently, but do not hold a
-    # GitHub Actions runner forever.
-    deadline = time.monotonic() + min(720, max(60, time_left() - 180))
-    while time.monotonic() < deadline:
-        time.sleep(10)
-        check_response = http(
-            "GET", f"{AI_HORDE_API}/generate/check/{job_id}",
-            retries=1, timeout=(10, 30), headers=headers,
-        )
-        check_response.raise_for_status()
-        check = check_response.json()
-        if check.get("faulted"):
-            raise RuntimeError("AI Horde generation failed on the volunteer worker.")
-        if check.get("done"):
-            break
-        log.info("AI Horde image queued/processing (queue position: %s).", check.get("queue_position", "unknown"))
-    else:
-        try:
-            http("DELETE", f"{AI_HORDE_API}/generate/status/{job_id}",
-                 retries=0, timeout=(10, 20), headers=headers)
-        except Exception:
-            pass
-        raise RuntimeError("AI Horde anonymous image request timed out in the public queue.")
-
-    result_response = http(
-        "GET", f"{AI_HORDE_API}/generate/status/{job_id}",
-        retries=1, timeout=(10, 45), headers=headers,
-    )
-    result_response.raise_for_status()
-    result = result_response.json()
-    generations = result.get("generations") or []
-    if not generations or not generations[0].get("img"):
-        raise RuntimeError("AI Horde completed the job but returned no image.")
-    image_value = generations[0]["img"]
-    if isinstance(image_value, str) and image_value.startswith(("http://", "https://")):
-        image_response = http("GET", image_value, retries=1, timeout=(15, 60))
-        image_response.raise_for_status()
-        image_bytes = image_response.content
-    else:
-        if isinstance(image_value, str) and image_value.startswith("data:") and "," in image_value:
-            image_value = image_value.split(",", 1)[1]
-        try:
-            image_bytes = base64.b64decode(image_value, validate=True)
-        except (ValueError, TypeError) as exc:
-            raise RuntimeError("AI Horde returned an unreadable image payload.") from exc
-    # Anonymous Horde requests may be limited to 512x512; accept that size.
-    image = validate_photo_relaxed(image_bytes)
-    log.info("Generated original 3D editorial image through AI Horde (%dx%d).", *image.size)
-    return image
-
-def validate_photo_relaxed(data):
-    if not data or len(data) > 15 * 1024 * 1024:
-        raise ValueError("Generated image empty or over 15 MB.")
-    image = Image.open(BytesIO(data))
-    image.verify()
-    image = Image.open(BytesIO(data))
-    if image.format not in ("JPEG", "PNG", "WEBP"):
-        raise ValueError("Unsupported generated image format.")
-    image = ImageOps.exif_transpose(image).convert("RGB")
-    width, height = image.size
-    if width < 512 or height < 512 or width * height < 262144 or width > 12000 or height > 12000:
-        raise ValueError("Generated image dimensions unsuitable.")
-    if not 0.38 <= width / height <= 3.2:
-        raise ValueError("Generated image aspect ratio unsuitable.")
-    return image
 def get_news_photo(article):
     checked = set()
     for candidate in image_candidates(article):
