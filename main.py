@@ -306,49 +306,52 @@ class ImageMetaParser(HTMLParser):
                 self.licenses.append(attrs["href"])
 
 def openverse_image_candidates(article):
-    """Find openly licensed, commercially reusable landscape photos via Openverse."""
+    """Find commercially reusable photographs and report upstream errors clearly."""
     query = clean(article.get("title") or "")[:180]
     if not query:
         return []
     try:
-        response = http(
-            "GET", "https://api.openverse.org/v1/images/",
-            retries=1, timeout=(10, 20),
-            params={
-                "q": query,
-                "license_type": "commercial",
-                "category": "photograph",
-                "aspect_ratio": "wide",
-                "size": "large",
-                "page_size": 10,
-                "filter_dead": "true",
-                "mature": "false"
-            }
+        response = SESSION.get(
+            "https://api.openverse.org/v1/images/",
+            params={"q": query, "license_type": "commercial", "category": "photograph",
+                    "aspect_ratio": "wide", "size": "large", "page_size": 10,
+                    "filter_dead": "true", "mature": "false"},
+            headers={"Accept": "application/json",
+                     "User-Agent": "PulseNamaPublisher/6.2 (openly licensed news photo search)"},
+            timeout=(10, 25)
         )
-        response.raise_for_status()
-        payload = response.json()
+        content_type = response.headers.get("Content-Type", "")
+        if response.status_code != 200:
+            log.warning("Openverse HTTP %s (%s): %s", response.status_code, content_type,
+                        redact(response.text[:180]).replace("\\n", " "))
+            return []
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            log.warning("Openverse invalid JSON (HTTP %s, %s): %s; body=%s",
+                        response.status_code, content_type, redact(exc),
+                        redact(response.text[:180]).replace("\\n", " "))
+            return []
         candidates = []
         for item in payload.get("results", []):
             image_url = item.get("url") or ""
             width, height = int(item.get("width") or 0), int(item.get("height") or 0)
             license_code = clean(item.get("license") or "")
-            license_url = item.get("license_url") or ""
-            # Keep a second local check even though the API filters for commercial use.
             if (not image_url.startswith("https://") or width < 1000 or height < 600
                     or width / max(height, 1) < 1.15 or not reusable_license(license_code)):
                 continue
             candidates.append({
-                "url": image_url,
-                "source": "Openverse",
-                "license": license_code,
-                "license_name": license_code.upper(),
-                "license_url": license_url,
+                "url": image_url, "source": "Openverse", "license": license_code,
+                "license_name": license_code.upper(), "license_url": item.get("license_url") or "",
                 "artist": clean(item.get("creator") or ""),
                 "artist_url": item.get("creator_url") or "",
                 "source_page": item.get("foreign_landing_url") or item.get("detail_url") or ""
             })
         log.info("Openverse returned %d suitable commercial-use image candidates.", len(candidates))
         return candidates
+    except (requests.Timeout, requests.ConnectionError) as exc:
+        log.warning("Openverse connection failed: %s", redact(exc))
+        return []
     except Exception as exc:
         log.warning("Openverse image search unavailable: %s", redact(exc))
         return []
@@ -455,15 +458,17 @@ def allowed_domain(url):
     return any(host == domain or host.endswith("." + domain) for domain in domains)
 
 def reusable_license(value):
-    value = (value or "").lower().replace("cc-", "cc ")
-    # Non-commercial and no-derivatives licences are not suitable for this
-    # automated, potentially monetized news workflow.
-    if re.search(r"\b(nc|non[- ]commercial|nd|no[- ]derivatives)\b", value):
+    value = (value or "").strip().lower()
+    # Openverse compact codes: by, by-sa, cc0 and pdm permit commercial reuse.
+    if value in {"by", "by-sa", "cc0", "pdm", "public domain", "public domain mark"}:
+        return True
+    normalized = value.replace("cc-", "cc ").replace("_", " ")
+    if re.search(r"\b(nc|non[- ]commercial|nd|no[- ]derivatives)\b", normalized):
         return False
     return bool(re.search(
         r"public[\s-]?domain|\bcc0\b|\bcc by(?:\s|$|[-/])|\bcc by-sa\b|"
         r"creative commons attribution(?:-sharealike)?",
-        value
+        normalized
     ))
 
 def validate_photo(data):
@@ -807,16 +812,18 @@ def download_image(url):
     return validate_photo(response.content)
 
 def make_graphic(photo, headline, category, story, key):
-    image = photo_card(photo, headline, category, story) if photo else branded_card(headline, category, story)
+    if photo is None:
+        raise ValueError("A real, reusable news photo is required; text-only graphics are disabled.")
+    image = photo_card(photo, story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
 
 def attempt_story(key, record, state, photo=None, due=None):
     record["story_attempts"] = int(record.get("story_attempts", 0)) + 1
     try:
-        if photo is None and record.get("photo_mode") == "licensed":
-            if not record.get("original_photo_url"):
-                raise RuntimeError("Original licensed image URL unavailable.")
+        if photo is None:
+            if record.get("photo_mode") != "licensed" or not record.get("original_photo_url"):
+                raise RuntimeError("No reusable news photo is available for this story.")
             photo = download_image(record["original_photo_url"])
         path = make_graphic(photo, record.get("headline") or record.get("title", "PulseNama"),
                             record.get("category", "LATEST NEWS"), True, key)
@@ -929,14 +936,15 @@ def process_article(article, state, stats):
         stats["unsuitable"] += 1
         return
 
-    # Use a third-party news photo only when reuse rights are established.
-    # Otherwise generate a PulseNama-owned typographic graphic with no copied photo.
+    # Publish only when a real news photo with established reuse rights is available.
+    # Otherwise skip this article instead of publishing a text-only graphic.
     photo, photo_url = get_news_photo(article)
-    photo_mode = "licensed" if photo else "brand_graphic"
-    if photo:
-        log.info("Using a photo with an established reuse basis.")
-    else:
-        log.info("No reusable photo found; creating an original PulseNama branded graphic instead.")
+    if not photo:
+        stats["photo_permission_skips"] += 1
+        log.warning("No reusable news photo found; skipping this article instead of publishing a graphic.")
+        return
+    photo_mode = "licensed"
+    log.info("Using a real photo with an established reuse basis.")
 
     category = copy["category"] or CATEGORY.get(article["bucket"], "LATEST NEWS")
     feed_path = make_graphic(photo, copy["headline"], category, False, key)
