@@ -305,6 +305,54 @@ class ImageMetaParser(HTMLParser):
             if "license" in rel and attrs.get("href"):
                 self.licenses.append(attrs["href"])
 
+def openverse_image_candidates(article):
+    """Find openly licensed, commercially reusable landscape photos via Openverse."""
+    query = clean(article.get("title") or "")[:180]
+    if not query:
+        return []
+    try:
+        response = http(
+            "GET", "https://api.openverse.org/v1/images/",
+            retries=1, timeout=(10, 20),
+            params={
+                "q": query,
+                "license_type": "commercial",
+                "category": "photograph",
+                "aspect_ratio": "wide",
+                "size": "large",
+                "page_size": 10,
+                "filter_dead": "true",
+                "mature": "false"
+            }
+        )
+        response.raise_for_status()
+        payload = response.json()
+        candidates = []
+        for item in payload.get("results", []):
+            image_url = item.get("url") or ""
+            width, height = int(item.get("width") or 0), int(item.get("height") or 0)
+            license_code = clean(item.get("license") or "")
+            license_url = item.get("license_url") or ""
+            # Keep a second local check even though the API filters for commercial use.
+            if (not image_url.startswith("https://") or width < 1000 or height < 600
+                    or width / max(height, 1) < 1.15 or not reusable_license(license_code)):
+                continue
+            candidates.append({
+                "url": image_url,
+                "source": "Openverse",
+                "license": license_code,
+                "license_name": license_code.upper(),
+                "license_url": license_url,
+                "artist": clean(item.get("creator") or ""),
+                "artist_url": item.get("creator_url") or "",
+                "source_page": item.get("foreign_landing_url") or item.get("detail_url") or ""
+            })
+        log.info("Openverse returned %d suitable commercial-use image candidates.", len(candidates))
+        return candidates
+    except Exception as exc:
+        log.warning("Openverse image search unavailable: %s", redact(exc))
+        return []
+
 def pexels_image_candidates(article):
     """Find a relevant, reusable landscape photo through the official Pexels API."""
     if not PEXELS_API_KEY:
@@ -359,8 +407,10 @@ def image_candidates(article):
     except Exception as exc:
         log.info("Article image lookup failed: %s", redact(exc))
 
-    # Pexels photos are covered by the Pexels License for reuse in this workflow.
-    # API results include the photographer and source page for optional attribution.
+    # Openverse searches openly licensed images and filters for commercial-use licences.
+    results.extend(openverse_image_candidates(article))
+
+    # Pexels remains an optional source when the operator has an API key.
     results.extend(pexels_image_candidates(article))
 
     # Wikimedia Commons: use only licences that permit redistribution and editing.
@@ -405,7 +455,7 @@ def allowed_domain(url):
     return any(host == domain or host.endswith("." + domain) for domain in domains)
 
 def reusable_license(value):
-    value = (value or "").lower()
+    value = (value or "").lower().replace("cc-", "cc ")
     # Non-commercial and no-derivatives licences are not suitable for this
     # automated, potentially monetized news workflow.
     if re.search(r"\b(nc|non[- ]commercial|nd|no[- ]derivatives)\b", value):
