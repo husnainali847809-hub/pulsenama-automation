@@ -456,6 +456,64 @@
       "created": "2026-11-06T13:24:48+00:00",
       "updated": "2026-11-06T13:24:49+00:00",
       "story_due_at": "2026-11-06T13:39:47.661Z"
+    },
+    "6ab744660e853532c941ef107109ad94459be001d0da2fa100cf701bf309d8c1": {
+      "title": "Karnataka To Get First Woman Minister? DK Shivakumar Hints At Cabinet Announcement | News18",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-06T13:38:33+00:00",
+      "updated": "2026-11-06T13:38:33+00:00"
+    },
+    "91fa41a991a61b2f743a1b84dbca54e4f0092251c61573c21d4bb65b5ed22f30": {
+      "title": "Over 22.1m children vaccinated in ongoing anti-polio drive: NEOC",
+      "bucket": "health",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-06T13:38:44+00:00",
+      "updated": "2026-11-06T13:38:44+00:00"
+    },
+    "b072e893371c50f64279dd5804380080e15c73f080dfd83608d35c93cf8708de": {
+      "title": "\"Your Father Will Get Cancer\": Pakistan Star Calls Out Babar Azam's \"Uneducated\" Fans In Stunning Revelation",
+      "bucket": "sports",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-06T13:38:56+00:00",
+      "updated": "2026-11-06T13:38:56+00:00"
+    },
+    "49701c3c08a80b37dd829b5df5412d9eea314b289c17346f7dbeec851a8e53bc": {
+      "title": "Artificial Intelligence in JVHS",
+      "bucket": "technology",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-06T13:39:01+00:00",
+      "updated": "2026-11-06T13:39:01+00:00"
+    },
+    "0d4f8b7786cdcb96caf0938f84c82099236406d11d55ef0c9700179d75130be4": {
+      "title": "International media spotlight Egypt as Madinaty Golf Club hosts World Golf Awards 2026",
+      "bucket": "world",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-06T13:39:09+00:00",
+      "updated": "2026-11-06T13:39:09+00:00"
+    },
+    "3e2d206e931a9cfff73bfd83a248b84e37f1d54f5414b3507cfcdb42af70d0c8": {
+      "title": "How China's clean-tech machine is reshaping the global climate fight",
+      "headline": "China's clean tech exports near wealthy nations' climate finance total",
+      "bucket": "pakistan",
+      "category": "WORLD",
+      "feed": "queued",
+      "feed_post_id": "6aedd8b2fd32b2a5bf105023",
+      "feed_due_at": "2026-11-06T13:55:01.615Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793972401/bizpakistan/3e2d206e931a9cfff73bfd83-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1793972400/bizpakistan/3e2d206e931a9cfff73bfd83-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aedd8b3f6d00f3472b5b665",
+      "created": "2026-11-06T13:40:02+00:00",
+      "updated": "2026-11-06T13:40:03+00:00",
+      "story_due_at": "2026-11-06T13:55:01.615Z"
     }
   },
   "version": 2
