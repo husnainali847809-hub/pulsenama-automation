@@ -13,7 +13,7 @@ from urllib.parse import quote_plus, urljoin, urlparse, parse_qsl, urlencode, ur
 import requests
 import cloudinary
 import cloudinary.uploader
-from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance, ImageFilter, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 # ---------------- Configuration ----------------
 
@@ -481,7 +481,7 @@ def validate_photo(data):
         raise ValueError("Unsupported image format.")
     image = ImageOps.exif_transpose(image).convert("RGB")
     width, height = image.size
-    if width < 600 or height < 400 or width * height < 300000 or width > 12000 or height > 12000:
+    if width < 600 or height < 600 or width * height < 800000 or width > 12000 or height > 12000:
         raise ValueError("Image dimensions unsuitable.")
     if not 0.38 <= width / height <= 3.2:
         raise ValueError("Image aspect ratio unsuitable.")
@@ -728,17 +728,23 @@ def prepare_photo(photo):
     return ImageOps.exif_transpose(photo).convert("RGB")
 
 def photo_card(photo, story=False):
-    """Keep the original news photo clear; add only the Biz Pakistan logo/name."""
+    """Preserve the entire source photograph without cropping or visual filters."""
     width, height = (1080, 1920) if story else (1080, 1350)
-    image = ImageOps.fit(prepare_photo(photo), (width, height), Image.Resampling.LANCZOS,
-                         centering=(0.5, 0.42)).convert("RGBA")
+    source = prepare_photo(photo)
+    # Fit the complete photo inside the social format. A plain dark canvas fills
+    # the remaining space instead of cropping people, buildings, or key details.
+    image = Image.new("RGB", (width, height), DARK)
+    fitted = ImageOps.contain(source, (width, height), Image.Resampling.LANCZOS)
+    x = (width - fitted.width) // 2
+    y = (height - fitted.height) // 2
+    image.paste(fitted, (x, y))
     draw = ImageDraw.Draw(image)
-    draw_logo(draw, width - 38, 38 if not story else height - 100)
-    return image.convert("RGB")
+    draw_logo(draw, width - 38, 38)
+    return image
 
 def save_jpeg(image, filename):
     path = WORK_DIR / filename
-    image.save(path, "JPEG", quality=94, subsampling=0, optimize=True)
+    image.save(path, "JPEG", quality=96, subsampling=0, optimize=True)
     return str(path)
 
 # ---------------- Cloudinary and Buffer ----------------
@@ -1014,7 +1020,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nNews visuals use verified reusable source photographs, lightly enhanced for clarity and depth. Biz Pakistan branding is overlaid separately.\n")
+            summary.write("\nNews visuals preserve the complete verified source photograph without cropping or filters. Only the Biz Pakistan logo and name are overlaid.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
@@ -1036,7 +1042,7 @@ def main():
         state = load_state()
         log.info("Biz Pakistan | OpenRouter=%s | max posts=%d | stories=%s | history=%d",
                  OPENROUTER_MODEL, MAX_POSTS, ENABLE_STORIES, len(state["articles"]))
-        log.info("Image mode: verified relevant source photos with professional depth/clarity enhancement; no AI-generated images.")
+        log.info("Image mode: verified high-resolution source photos, full image preserved without crop or filters.")
         retry_stories(state, stats)
         candidates = select_candidates(fetch_news(), state)
         log.info("%d fresh candidates after filtering.", len(candidates))
