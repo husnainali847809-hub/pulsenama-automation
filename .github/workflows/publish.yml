@@ -42,7 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Unique News
+      - name: Run PulseNama Publisher
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
