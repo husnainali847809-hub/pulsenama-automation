@@ -967,7 +967,7 @@ def process_article(article, state, stats):
             if credit.get("license_url"):
                 image_credit += " (" + credit["license_url"] + ")"
             if credit.get("source_page"):
-                image_credit += "\\nPhoto: " + credit["source_page"]
+                image_credit += "\nPhoto: " + credit["source_page"]
     feed_text = f'{copy["headline"]}\n\n{copy["caption"]}\n\nSource: {article["link"]}{image_credit}\n\n{" ".join(copy["hashtags"])}'
     due = (now() + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
     try:
