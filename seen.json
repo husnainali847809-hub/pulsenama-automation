@@ -680,6 +680,24 @@
       "story": "skipped",
       "created": "2026-11-07T09:31:54+00:00",
       "updated": "2026-11-07T09:31:54+00:00"
+    },
+    "704ab365bad91a133a2eb253b654fc0a5c572a88e1c12a71a17a362a5322f1d8": {
+      "title": "Pakistan include three uncapped players for Sri Lanka Tests",
+      "headline": "Pakistan ne Sri Lanka Tests ke liye teen uncapped players shamil kiye",
+      "bucket": "breaking",
+      "category": "SPORTS",
+      "feed": "queued",
+      "feed_post_id": "6aef1947d6bbae6fa1873fad",
+      "feed_due_at": "2026-11-07T12:42:51.144Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794054470/bizpakistan/704ab365bad91a133a2eb253-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794054470/bizpakistan/704ab365bad91a133a2eb253-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aef1948004e4879a7558d8d",
+      "created": "2026-11-07T12:27:51+00:00",
+      "updated": "2026-11-07T12:27:52+00:00",
+      "story_due_at": "2026-11-07T12:42:51.144Z"
     }
   },
   "version": 2
