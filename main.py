@@ -305,56 +305,78 @@ class ImageMetaParser(HTMLParser):
             if "license" in rel and attrs.get("href"):
                 self.licenses.append(attrs["href"])
 
+def image_search_queries(article):
+    """Create short, topic-focused fallback queries from a news headline."""
+    title = clean(article.get("title") or "")
+    if not title:
+        return []
+    stop = STOPWORDS | set("pakistan pakistan's says said announces announced latest update updates report reports"
+                           " government minister pm president official officials today yesterday".split())
+    words = re.findall(r"[A-Za-z0-9']+", title)
+    useful = [w for w in words if w.lower().strip("'s") not in stop and len(w.strip("'s")) > 2]
+    queries = [title[:140]]
+    if len(useful) >= 3:
+        queries.append(" ".join(useful[:7]))
+    if len(useful) >= 5:
+        queries.append(" ".join(useful[:4]))
+    unique = []
+    for query in queries:
+        query = query.strip()
+        if query and query.lower() not in {x.lower() for x in unique}:
+            unique.append(query)
+    return unique[:3]
+
+
 def openverse_image_candidates(article):
-    """Find commercially reusable photographs and report upstream errors clearly."""
-    query = clean(article.get("title") or "")[:180]
-    if not query:
+    """Search several concise headline variants for commercially reusable photos."""
+    queries = image_search_queries(article)
+    if not queries:
         return []
-    try:
-        response = SESSION.get(
-            "https://api.openverse.org/v1/images/",
-            params={"q": query, "license_type": "commercial", "category": "photograph",
-                    "aspect_ratio": "wide", "size": "large", "page_size": 10,
-                    "filter_dead": "true", "mature": "false"},
-            headers={"Accept": "application/json",
-                     "User-Agent": "BizPakistanPublisher/6.2 (openly licensed news photo search)"},
-            timeout=(10, 25)
-        )
-        content_type = response.headers.get("Content-Type", "")
-        if response.status_code != 200:
-            log.warning("Openverse HTTP %s (%s): %s", response.status_code, content_type,
-                        redact(response.text[:180]).replace("\\n", " "))
-            return []
+    candidates, seen = [], set()
+    for query in queries:
+        if time_left() < 90:
+            break
         try:
-            payload = response.json()
-        except ValueError as exc:
-            log.warning("Openverse invalid JSON (HTTP %s, %s): %s; body=%s",
-                        response.status_code, content_type, redact(exc),
-                        redact(response.text[:180]).replace("\\n", " "))
-            return []
-        candidates = []
-        for item in payload.get("results", []):
-            image_url = item.get("url") or ""
-            width, height = int(item.get("width") or 0), int(item.get("height") or 0)
-            license_code = clean(item.get("license") or "")
-            if (not image_url.startswith("https://") or width < 1000 or height < 600
-                    or width / max(height, 1) < 1.15 or not reusable_license(license_code)):
+            response = SESSION.get(
+                "https://api.openverse.org/v1/images/",
+                params={"q": query, "license_type": "commercial", "category": "photograph",
+                        "page_size": 20, "filter_dead": "true", "mature": "false"},
+                headers={"Accept": "application/json",
+                         "User-Agent": "BizPakistanPublisher/6.3 (openly licensed news photo search)"},
+                timeout=(10, 25)
+            )
+            if response.status_code != 200:
+                log.warning("Openverse HTTP %s for query '%s'.", response.status_code, query[:70])
                 continue
-            candidates.append({
-                "url": image_url, "source": "Openverse", "license": license_code,
-                "license_name": license_code.upper(), "license_url": item.get("license_url") or "",
-                "artist": clean(item.get("creator") or ""),
-                "artist_url": item.get("creator_url") or "",
-                "source_page": item.get("foreign_landing_url") or item.get("detail_url") or ""
-            })
-        log.info("Openverse returned %d suitable commercial-use image candidates.", len(candidates))
-        return candidates
-    except (requests.Timeout, requests.ConnectionError) as exc:
-        log.warning("Openverse connection failed: %s", redact(exc))
-        return []
-    except Exception as exc:
-        log.warning("Openverse image search unavailable: %s", redact(exc))
-        return []
+            try:
+                payload = response.json()
+            except ValueError:
+                log.warning("Openverse returned invalid JSON for query '%s'.", query[:70])
+                continue
+            for item in payload.get("results", []):
+                image_url = item.get("url") or ""
+                width, height = int(item.get("width") or 0), int(item.get("height") or 0)
+                license_code = clean(item.get("license") or "")
+                if (not image_url.startswith("https://") or image_url in seen
+                        or width < 900 or height < 550 or width / max(height, 1) < 1.15
+                        or not reusable_license(license_code)):
+                    continue
+                seen.add(image_url)
+                candidates.append({
+                    "url": image_url, "source": "Openverse", "license": license_code,
+                    "license_name": license_code.upper(), "license_url": item.get("license_url") or "",
+                    "artist": clean(item.get("creator") or ""),
+                    "artist_url": clean(item.get("creator_url") or ""),
+                    "source_page": item.get("foreign_landing_url") or item.get("detail_url") or "",
+                    "search_query": query
+                })
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            log.warning("Openverse connection failed for '%s': %s", query[:60], redact(exc))
+        except Exception as exc:
+            log.warning("Openverse search failed for '%s': %s", query[:60], redact(exc))
+    log.info("Openverse returned %d suitable candidates across %d query variants.",
+             len(candidates), len(queries))
+    return candidates
 
 def pexels_image_candidates(article):
     """Find a relevant, reusable landscape photo through the official Pexels API."""
@@ -416,34 +438,41 @@ def image_candidates(article):
     # Pexels remains an optional source when the operator has an API key.
     results.extend(pexels_image_candidates(article))
 
-    # Wikimedia Commons: use only licences that permit redistribution and editing.
+    # Wikimedia Commons: try concise variants and keep only reusable licences.
     # CC BY-NC and CC BY-ND are deliberately excluded.
     try:
-        query = quote_plus((article.get("title") or "")[:180])
-        api = ("https://commons.wikimedia.org/w/api.php?action=query&generator=search"
-               f"&gsrsearch={query}&gsrnamespace=6&gsrlimit=8"
-               "&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1600&format=json")
-        response = http("GET", api, retries=1, timeout=(10, 25),
-                        headers={"User-Agent": "BizPakistanPublisher/6.1 (news image licence lookup)"})
-        response.raise_for_status()
-        pages = (response.json().get("query") or {}).get("pages") or {}
-        for page in pages.values():
-            info = (page.get("imageinfo") or [{}])[0]
-            meta = info.get("extmetadata") or {}
-            def meta_value(name):
-                item = meta.get(name) or {}
-                return clean(item.get("value", "")) if isinstance(item, dict) else ""
-            licence = meta_value("LicenseShortName")
-            artist = meta_value("Artist")
-            licence_url = meta_value("LicenseUrl")
-            licence_text = " ".join((licence, licence_url))
-            if not reusable_license(licence_text):
-                continue
-            image_url = info.get("thumburl") or info.get("url")
-            if image_url and image_url.startswith("https://"):
+        seen_wiki = set()
+        for query_text in image_search_queries(article):
+            if time_left() < 90:
+                break
+            api = "https://commons.wikimedia.org/w/api.php"
+            response = http("GET", api, retries=1, timeout=(10, 25),
+                            headers={"User-Agent": "BizPakistanPublisher/6.3 (news image licence lookup)"},
+                            params={"action": "query", "generator": "search", "gsrsearch": query_text,
+                                    "gsrnamespace": 6, "gsrlimit": 12, "prop": "imageinfo",
+                                    "iiprop": "url|extmetadata", "iiurlwidth": 1800, "format": "json"})
+            response.raise_for_status()
+            pages = (response.json().get("query") or {}).get("pages") or {}
+            for page in pages.values():
+                info = (page.get("imageinfo") or [{}])[0]
+                meta = info.get("extmetadata") or {}
+                def meta_value(name):
+                    item = meta.get(name) or {}
+                    return clean(item.get("value", "")) if isinstance(item, dict) else ""
+                licence = meta_value("LicenseShortName")
+                artist = meta_value("Artist")
+                licence_url = meta_value("LicenseUrl")
+                licence_text = " ".join((licence, licence_url))
+                image_url = info.get("thumburl") or info.get("url")
+                if (not image_url or not image_url.startswith("https://")
+                        or image_url in seen_wiki or not reusable_license(licence_text)):
+                    continue
+                seen_wiki.add(image_url)
                 results.append({"url": image_url, "source": "Wikimedia Commons",
                                 "license": licence_text, "artist": artist,
-                                "license_name": licence, "license_url": licence_url})
+                                "license_name": licence, "license_url": licence_url,
+                                "source_page": "https://commons.wikimedia.org/wiki/" + quote_plus(page.get("title", "")),
+                                "search_query": query_text})
     except Exception as exc:
         log.info("Wikimedia Commons lookup unavailable: %s", redact(exc))
     # Keep first occurrence and cap network work on the next stage.
