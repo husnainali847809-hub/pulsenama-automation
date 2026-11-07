@@ -475,11 +475,19 @@ def image_candidates(article):
                                 "search_query": query_text})
     except Exception as exc:
         log.info("Wikimedia Commons lookup unavailable: %s", redact(exc))
-    # Keep first occurrence and cap network work on the next stage.
+    # Prefer candidates whose reuse licence is already documented. Unlicensed
+    # article OG/RSS thumbnails must not crowd licensed search results out.
     unique = {}
     for item in results:
-        unique.setdefault(item.get("url"), item)
-    return list(unique.values())[:18]
+        url = item.get("url")
+        if url:
+            unique.setdefault(url, item)
+    ordered = list(unique.values())
+    ordered.sort(key=lambda item: 0 if (
+        reusable_license(item.get("license", "")) or
+        (item.get("source") == "Pexels" and item.get("license") == "Pexels License")
+    ) else 1)
+    return ordered[:36]
 
 def allowed_domain(url):
     domains = [value.strip().lower().lstrip(".") for value in env("IMAGE_ALLOWED_DOMAINS").split(",") if value.strip()]
