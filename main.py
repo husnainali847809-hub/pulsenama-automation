@@ -327,10 +327,44 @@ class ImageMetaParser(HTMLParser):
                 self.licenses.append(attrs["href"])
 
 def image_search_queries(article):
-    """Create short, topic-focused fallback queries from a news headline."""
+    """Build entity-first searches so cricket visuals show the actual team or player."""
     title = clean(article.get("title") or "")
     if not title:
         return []
+    bucket = str(article.get("bucket") or "").lower()
+    if bucket == "cricket":
+        known_players = [
+            "Babar Azam", "Mohammad Rizwan", "Shaheen Afridi", "Naseem Shah",
+            "Fakhar Zaman", "Shadab Khan", "Haris Rauf", "Saim Ayub",
+            "Abdullah Shafique", "Imam-ul-Haq", "Saud Shakeel", "Abrar Ahmed",
+            "Imad Wasim", "Mohammad Amir", "Shoaib Malik", "Wasim Akram",
+            "Waqar Younis", "Inzamam-ul-Haq", "Sana Mir", "Nida Dar",
+            "Fatima Sana", "Muneeba Ali", "Jemimah Rodrigues"
+        ]
+        known_teams = [
+            "Pakistan national cricket team", "Pakistan women cricket team",
+            "Lahore Qalandars", "Karachi Kings", "Islamabad United",
+            "Peshawar Zalmi", "Quetta Gladiators", "Multan Sultans",
+            "Rawalpindi cricket team", "Pakistan Shaheens"
+        ]
+        low = title.lower()
+        entities = [name for name in known_players + known_teams if name.lower() in low]
+        # Preserve a named entity as the leading query; avoid generic trophy/stadium results.
+        queries = []
+        for entity in entities[:2]:
+            queries.append(entity + " cricket official photo")
+        if not entities:
+            stop = STOPWORDS | set("pakistan pakistan's cricket cricketer cricketers player players team teams"
+                                   " says said announces announced latest update updates report reports"
+                                   " match matches test odi t20 second first tickets go sale".split())
+            words = re.findall(r"[A-Za-z0-9'-]+", title)
+            useful = [w for w in words if w.lower().strip("'s") not in stop and len(w.strip("'s")) > 2]
+            if useful:
+                queries.append("Pakistan cricket " + " ".join(useful[:5]))
+        queries.append("Pakistan cricket team players match action photo")
+        queries.append("Pakistan cricket team official squad photo")
+        return list(dict.fromkeys(q for q in queries if q))[:3]
+
     stop = STOPWORDS | set("pakistan pakistan's says said announces announced latest update updates report reports"
                            " government minister pm president official officials today yesterday".split())
     words = re.findall(r"[A-Za-z0-9']+", title)
@@ -340,13 +374,7 @@ def image_search_queries(article):
         queries.append(" ".join(useful[:7]))
     if len(useful) >= 5:
         queries.append(" ".join(useful[:4]))
-    unique = []
-    for query in queries:
-        query = query.strip()
-        if query and query.lower() not in {x.lower() for x in unique}:
-            unique.append(query)
-    return unique[:3]
-
+    return list(dict.fromkeys(q.strip() for q in queries if q.strip()))[:3]
 
 def openverse_image_candidates(article):
     """Search several concise headline variants for commercially reusable photos."""
