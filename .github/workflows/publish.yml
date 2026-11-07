@@ -1,9 +1,9 @@
 name: Biz Pakistan Auto Publisher
 
 on:
-  # Five daily runs: 08:00, 11:00, 14:00, 17:00 and 20:00 Pakistan time (UTC+5).
+  # Check every two hours so breaking Pakistan and cricket updates are picked up quickly.
   schedule:
-    - cron: "0 3,6,9,12,15 * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       max_articles:
@@ -51,6 +51,9 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           MAX_ARTICLES_PER_RUN: ${{ inputs.max_articles || secrets.MAX_ARTICLES_PER_RUN || vars.MAX_ARTICLES_PER_RUN || '1' }}
+          DAILY_POST_LIMIT: "5"
+          MAX_REVIEWS_PER_RUN: "20"
+          MAX_AGE_HOURS: "24"
           PYTHONUNBUFFERED: "1"
         run: python main.py
 
