@@ -281,7 +281,7 @@ def is_pakistan_news(article):
         return any(term in text for term in ("pakistan", "pakistani", "pcb", "psl", "shaheens",
                                                "babar azam", "mohammad rizwan", "shaheen afridi",
                                                "pakistan women", "pakistan super league"))
-    return any(re.search(r"\\b" + re.escape(term) + r"\\b", text) for term in PAKISTAN_TERMS)
+    return any(re.search(r"\b" + re.escape(term) + r"\b", text) for term in PAKISTAN_TERMS)
 
 def fetch_news():
     found, successful = {}, 0
