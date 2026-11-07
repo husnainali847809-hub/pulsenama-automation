@@ -1,10 +1,9 @@
-
 name: Biz Pakistan Auto Publisher
 
 on:
-  # Five daily runs: 09:00, 12:00, 15:00, 18:00 and 21:00 Pakistan time (UTC+5).
+  # Five daily runs: 08:00, 11:00, 14:00, 17:00 and 20:00 Pakistan time (UTC+5).
   schedule:
-    - cron: "0 4,7,10,13,16 * * *"
+    - cron: "0 3,6,9,12,15 * * *"
   workflow_dispatch:
     inputs:
       max_articles:
