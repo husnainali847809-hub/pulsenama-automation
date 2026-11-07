@@ -4,10 +4,12 @@ on:
   # Check every two hours so breaking Pakistan and cricket updates are picked up quickly.
   schedule:
     - cron: "0 */2 * * *"
+    # Additional daily run at 10:00 AM Pakistan time (05:00 UTC).
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       max_articles:
-        description: "Max posts to queue in this run (1-5)"
+        description: "Max posts to queue in this run (1-6)"
         required: false
         default: "1"
 
@@ -51,7 +53,7 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           MAX_ARTICLES_PER_RUN: ${{ inputs.max_articles || secrets.MAX_ARTICLES_PER_RUN || vars.MAX_ARTICLES_PER_RUN || '1' }}
-          DAILY_POST_LIMIT: "5"
+          DAILY_POST_LIMIT: "6"
           MAX_REVIEWS_PER_RUN: "20"
           MAX_AGE_HOURS: "24"
           PYTHONUNBUFFERED: "1"
