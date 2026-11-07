@@ -532,6 +532,22 @@
       "created": "2026-11-06T13:58:14+00:00",
       "updated": "2026-11-06T13:58:15+00:00",
       "story_due_at": "2026-11-06T14:13:14.423Z"
+    },
+    "e6135959829c5554c62d36b6ef041ffb424e94788aaebb021bb3f61cab97009f": {
+      "title": "Pakistan to fast-track registration of 96 unregistered madrassas — Dawn",
+      "bucket": "breaking",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-07T04:36:46+00:00",
+      "updated": "2026-11-07T04:36:46+00:00"
+    },
+    "70f308f465edd1c8d7db63c8d87568b826742dbc7ff8e8abf211830a9c420002": {
+      "title": "Daanish Schools — learning without limits",
+      "bucket": "education",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-07T04:36:49+00:00",
+      "updated": "2026-11-07T04:36:49+00:00"
     }
   },
   "version": 2
