@@ -688,6 +688,42 @@ def ask_openrouter(model, prompt):
     except (ValueError, KeyError, IndexError, TypeError) as exc:
         raise AIError(f"Invalid OpenRouter response: {redact(exc)}")
 
+def safe_editorial_copy(article):
+    """Deterministic factual fallback when all free AI endpoints are rate-limited."""
+    title = clean(article.get("title") or "")
+    summary = clean(article.get("summary") or "")
+    source = clean(article.get("source") or "the publisher")
+    if not title or len(title) < 8 or not summary or len(summary) < 25:
+        log.warning("Safe editorial fallback rejected: source title/summary too thin.")
+        return None
+    headline = re.sub(r"\\s+", " ", title).strip()
+    words = headline.split()
+    if len(words) > 16:
+        headline = " ".join(words[:16]).rstrip(" ,.;:-") + "…"
+    headline = headline[:175].rstrip()
+    # Preserve the source's wording; no added claims or generated context.
+    body = re.sub(r"\\s+", " ", summary).strip()
+    if len(body) > 650:
+        body = body[:647].rsplit(" ", 1)[0].rstrip(" ,.;:-") + "..."
+    caption = f"{body} (Source: {source}.)"
+    bucket = str(article.get("bucket") or "").lower()
+    category = CATEGORY.get(bucket, "PAKISTAN")
+    tags_by_bucket = {
+        "breaking": ["#BreakingNews", "#Pakistan"],
+        "cricket": ["#PakistanCricket", "#Cricket"],
+        "sports": ["#PakistanSports", "#Sports"],
+        "politics": ["#PakistanPolitics", "#Pakistan"],
+        "business": ["#PakistanBusiness", "#Economy"],
+        "technology": ["#PakistanTech", "#Technology"],
+        "education": ["#PakistanEducation", "#Education"],
+        "health": ["#PakistanHealth", "#Health"],
+        "entertainment": ["#PakistanEntertainment", "#Entertainment"],
+    }
+    log.warning("Using deterministic source-based editorial fallback (AI endpoints unavailable).")
+    return {"headline": headline, "caption": caption[:900],
+            "hashtags": tags_by_bucket.get(bucket, ["#Pakistan", "#NewsUpdate"]),
+            "category": category}
+
 def make_copy(article):
     prompt = PROMPT.replace("__TITLE__", article["title"][:500])
     prompt = prompt.replace("__SUMMARY__", article.get("summary") or "(no summary supplied)")
@@ -699,6 +735,7 @@ def make_copy(article):
         if model and model not in models:
             models.append(model)
     last_error = None
+    rate_limited = False
     for model in models:
         for attempt in range(2):
             try:
@@ -710,16 +747,15 @@ def make_copy(article):
                 last_error = exc
                 message = redact(exc)
                 log.warning("OpenRouter %s attempt %d: %s", model, attempt + 1, message)
-                # A 429 is a provider/model capacity signal. Repeating the same
-                # model immediately wastes the run budget, so move to the next
-                # fallback instead. Other malformed/truncated responses get
-                # one bounded retry.
                 if "HTTP 429" in message or "rate-limit" in message.lower() or "rate limited" in message.lower():
+                    rate_limited = True
                     break
                 if attempt == 0 and time_left() > 120:
                     time.sleep(5)
                 else:
                     break
+    if rate_limited:
+        return safe_editorial_copy(article)
     raise AIError(f"All OpenRouter models failed: {redact(last_error)}")
 
 # ---------------- Branded graphics and licensed-photo graphics ----------------
