@@ -742,6 +742,32 @@
       "created": "2026-11-07T15:39:28+00:00",
       "updated": "2026-11-07T15:39:29+00:00",
       "story_due_at": "2026-11-07T15:54:27.889Z"
+    },
+    "61c67502edef34b2112bef9aae39763d21f29402d27cae25301911322a17a6f1": {
+      "title": "Pakistan and Sudan sign visa-free travel pact for official p",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-07T15:57:13+00:00",
+      "updated": "2026-11-07T15:57:13+00:00"
+    },
+    "4180b15f038e254db684001b7c376526324e613bb0372a31cc39178b731d3701": {
+      "title": "Pakistan Selectors Recall Aamer Jamal For Opening Test Against Sri Lanka",
+      "headline": "Pakistan selectors recall Aamer Jamal for opening Test against Sri Lanka",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6aef4a7a51492b796ee75bca",
+      "feed_due_at": "2026-11-07T16:12:46.216Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794067065/bizpakistan/4180b15f038e254db684001b-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794067065/bizpakistan/4180b15f038e254db684001b-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aef4a7b004e4879a76697e1",
+      "created": "2026-11-07T15:57:46+00:00",
+      "updated": "2026-11-07T15:57:47+00:00",
+      "story_due_at": "2026-11-07T16:12:46.216Z"
     }
   },
   "version": 2
