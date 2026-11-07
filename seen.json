@@ -612,6 +612,24 @@
       "story": "skipped",
       "created": "2026-11-07T05:03:24+00:00",
       "updated": "2026-11-07T05:03:24+00:00"
+    },
+    "c93a6dba60925bf337ac5bc9d0efdcf5dd7a537008e5f663e09dc3311b2f1797": {
+      "title": "JUI-F holds protests in Pakistan over claims of campaign to discredit Rehman — Dawn",
+      "headline": "JUI-F protests across Pakistan over alleged campaign against Rehman, Dawn reports",
+      "bucket": "breaking",
+      "category": "POLITICS",
+      "feed": "queued",
+      "feed_post_id": "6aeeb2d5229bf05daf2c8d6a",
+      "feed_due_at": "2026-11-07T05:25:45.252Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794028244/bizpakistan/c93a6dba60925bf337ac5bc9-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794028244/bizpakistan/c93a6dba60925bf337ac5bc9-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aeeb2d7229bf05daf2c8dbf",
+      "created": "2026-11-07T05:10:45+00:00",
+      "updated": "2026-11-07T05:10:47+00:00",
+      "story_due_at": "2026-11-07T05:25:45.252Z"
     }
   },
   "version": 2
