@@ -698,6 +698,24 @@
       "created": "2026-11-07T12:27:51+00:00",
       "updated": "2026-11-07T12:27:52+00:00",
       "story_due_at": "2026-11-07T12:42:51.144Z"
+    },
+    "b7ece00f01988142a764031a1b14c6e054d4b90ddbcade4e79790749a2fd2c15": {
+      "title": "Rising costs, poor earnings put Pakistan's medical education system under renewed scrutiny",
+      "headline": "Pakistan medical education system faces renewed scrutiny over costs, earnings",
+      "bucket": "breaking",
+      "category": "EDUCATION",
+      "feed": "queued",
+      "feed_post_id": "6aef42b19214322f68fdf9af",
+      "feed_due_at": "2026-11-07T15:39:33.046Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794065072/bizpakistan/b7ece00f01988142a764031a-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794065072/bizpakistan/b7ece00f01988142a764031a-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6aef42b2d6bbae6fa195f9c2",
+      "created": "2026-11-07T15:24:33+00:00",
+      "updated": "2026-11-07T15:24:34+00:00",
+      "story_due_at": "2026-11-07T15:39:33.046Z"
     }
   },
   "version": 2
