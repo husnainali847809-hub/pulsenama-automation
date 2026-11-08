@@ -934,6 +934,40 @@
       "created": "2026-11-08T08:42:17+00:00",
       "updated": "2026-11-08T08:42:18+00:00",
       "story_due_at": "2026-11-08T08:57:17.250Z"
+    },
+    "e9e79b04dd3d7ec984c93f99510186d9b995c0df8ef97d81732c7283584ed12d": {
+      "title": "Cricket match squads | QTG vs ISU, 9th Match, Pakistan Super League 2026",
+      "bucket": "cricket",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-08T10:28:52+00:00",
+      "updated": "2026-11-08T10:28:52+00:00"
+    },
+    "0fe8f6c2c0d4415ea8666be0c1d265b3625208502455a7084c433b50fd9c3c02": {
+      "title": "Pakistan plans Referendum on 12 New Provinces Under 28th Constitutional Amendment",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-08T10:29:19+00:00",
+      "updated": "2026-11-08T10:29:19+00:00"
+    },
+    "1e936ecb7d8db220c16b9c0764852c094fd5640a4298288cd97cda63506c9a65": {
+      "title": "Pakistani court extends detention of nine suspects until November 10 — Dawn",
+      "headline": "Pakistani court extends detention of nine suspects until November 10",
+      "bucket": "politics",
+      "category": "PAKISTAN",
+      "feed": "queued",
+      "feed_post_id": "6af04f27d6bbae6fa1e0a880",
+      "feed_due_at": "2026-11-08T10:44:58.485Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794133798/bizpakistan/1e936ecb7d8db220c16b9c07-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794133797/bizpakistan/1e936ecb7d8db220c16b9c07-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af04f2851492b796e2fd582",
+      "created": "2026-11-08T10:29:59+00:00",
+      "updated": "2026-11-08T10:30:00+00:00",
+      "story_due_at": "2026-11-08T10:44:58.485Z"
     }
   },
   "version": 2
