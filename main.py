@@ -1042,7 +1042,7 @@ def select_candidates(articles, state):
     for article in unique:
         groups.setdefault(article["bucket"], []).append(article)
     rng = random.Random(int(time.time() // 600))
-    order = sorted(groups, key=lambda bucket: (0 if bucket == "breaking" else 1 if bucket == "cricket" else 2, counts.get(bucket, 0), rng.random()))
+    order = sorted(groups, key=lambda bucket: (0 if bucket == "cricket" else 1 if bucket == "breaking" else 2, counts.get(bucket, 0), rng.random()))
     output = []
     while any(groups.values()):
         for bucket in order:
