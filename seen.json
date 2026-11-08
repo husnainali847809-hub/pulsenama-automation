@@ -898,6 +898,24 @@
       "created": "2026-11-08T04:47:56+00:00",
       "updated": "2026-11-08T04:47:57+00:00",
       "story_due_at": "2026-11-08T05:02:55.748Z"
+    },
+    "bd3f0603afe0d7795bd622d8395adf67dcacc5cec56f800a3323e92066e5dff4": {
+      "title": "‘No suitable candidate’ among nearly 100 applicants for Pakistan Council of Scientific and Industrial Research's top post",
+      "headline": "Nearly 100 Applicants, No Suitable Candidate for PCSIR Top Post",
+      "bucket": "breaking",
+      "category": "POLITICS",
+      "feed": "queued",
+      "feed_post_id": "6af00aae562f2e6de99cc553",
+      "feed_due_at": "2026-11-08T05:52:50.321Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794116269/bizpakistan/bd3f0603afe0d7795bd622d8-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794116269/bizpakistan/bd3f0603afe0d7795bd622d8-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af00aafd6bbae6fa1cc96e9",
+      "created": "2026-11-08T05:37:50+00:00",
+      "updated": "2026-11-08T05:37:51+00:00",
+      "story_due_at": "2026-11-08T05:52:50.321Z"
     }
   },
   "version": 2
