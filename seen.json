@@ -986,6 +986,24 @@
       "created": "2026-11-08T19:29:24+00:00",
       "updated": "2026-11-08T19:29:25+00:00",
       "story_due_at": "2026-11-08T19:44:23.544Z"
+    },
+    "d1272e682d9e1a839055c543d6f44b0562516c9d12969adaa32fd60c396627fb": {
+      "title": "Cricket match squads | PAK vs SL, 1st Match, Pakistan ODI Tri-Series, 2026",
+      "headline": "Cricket match squads | PAK vs SL, 1st Match, Pakistan ODI Tri-Series, 2026",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af0f69a004e4879a7e4a042",
+      "feed_due_at": "2026-11-08T22:39:26.596Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794176666/bizpakistan/d1272e682d9e1a839055c543-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794176665/bizpakistan/d1272e682d9e1a839055c543-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af0f69bd6bbae6fa115c85f",
+      "created": "2026-11-08T22:24:26+00:00",
+      "updated": "2026-11-08T22:24:27+00:00",
+      "story_due_at": "2026-11-08T22:39:26.596Z"
     }
   },
   "version": 2
