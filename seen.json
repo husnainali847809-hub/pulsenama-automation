@@ -916,6 +916,24 @@
       "created": "2026-11-08T05:37:50+00:00",
       "updated": "2026-11-08T05:37:51+00:00",
       "story_due_at": "2026-11-08T05:52:50.321Z"
+    },
+    "4ffda21c60b64db2d286d484e253a764e3209d28a9d5ff78cdcba9c7a49b18b5": {
+      "title": "Mendis backs Sri Lanka's balance ahead of Pakistan Test",
+      "headline": "Mendis endorses Sri Lanka's squad balance for upcoming Pakistan Test",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af035e9229bf05daf9d83fb",
+      "feed_due_at": "2026-11-08T08:57:17.250Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794127336/bizpakistan/4ffda21c60b64db2d286d484-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794127336/bizpakistan/4ffda21c60b64db2d286d484-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af035ea562f2e6de9a819d1",
+      "created": "2026-11-08T08:42:17+00:00",
+      "updated": "2026-11-08T08:42:18+00:00",
+      "story_due_at": "2026-11-08T08:57:17.250Z"
     }
   },
   "version": 2
