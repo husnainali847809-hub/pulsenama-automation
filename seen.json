@@ -1142,6 +1142,24 @@
       "created": "2026-11-09T14:05:45+00:00",
       "updated": "2026-11-09T14:05:46+00:00",
       "story_due_at": "2026-11-09T14:20:44.744Z"
+    },
+    "fb5b948fa336512283746b265d95fb522a2a70fbc63cf06fef63255e14a8be25": {
+      "title": "Debutant Arif hits half-century as Pakistan reach 137-2 at lunch",
+      "headline": "Debutant Arif scores half-century as Pakistan reaches 137-2",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af1fa8e0b813b4650671836",
+      "feed_due_at": "2026-11-09T17:08:33.728Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794243213/bizpakistan/fb5b948fa336512283746b26-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794243212/bizpakistan/fb5b948fa336512283746b26-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af1fa8f08578dcbeb66eac8",
+      "created": "2026-11-09T16:53:34+00:00",
+      "updated": "2026-11-09T16:53:35+00:00",
+      "story_due_at": "2026-11-09T17:08:33.728Z"
     }
   },
   "version": 2
