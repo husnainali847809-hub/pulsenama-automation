@@ -417,7 +417,8 @@ def openverse_image_candidates(article):
                     "artist": clean(item.get("creator") or ""),
                     "artist_url": clean(item.get("creator_url") or ""),
                     "source_page": item.get("foreign_landing_url") or item.get("detail_url") or "",
-                    "search_query": query
+                    "search_query": query,
+                    "image_description": clean(item.get("title") or "") + " " + " ".join(clean(tag.get("name", "") if isinstance(tag, dict) else str(tag)) for tag in (item.get("tags") or []))
                 })
         except (requests.Timeout, requests.ConnectionError) as exc:
             log.warning("Openverse connection failed for '%s': %s", query[:60], redact(exc))
@@ -459,7 +460,8 @@ def pexels_image_candidates(article):
                 "license_name": "Pexels License",
                 "license_url": "https://www.pexels.com/license/",
                 "artist": clean(photo.get("photographer") or ""),
-                "source_page": photo.get("url") or ""
+                "source_page": photo.get("url") or "",
+                "image_description": clean(photo.get("alt") or "")
             })
         log.info("Pexels returned %d suitable image candidates.", len(candidates))
         return candidates
@@ -573,9 +575,31 @@ def validate_photo(data):
         raise ValueError("Image aspect ratio unsuitable.")
     return image
 
+def image_relevance_score(article, candidate):
+    """Rank photos using story keywords and available image metadata."""
+    title = clean(article.get("title") or "").lower()
+    summary = clean(article.get("summary") or "").lower()
+    text = (clean(candidate.get("image_description") or "") + " " +
+            clean(candidate.get("search_query") or "")).lower()
+    stop = STOPWORDS | set("pakistan pakistani says said report reports latest news update updates announces announced".split())
+    important = [w for w in re.findall(r"[a-z0-9]+", title) if len(w) > 2 and w not in stop]
+    if not important:
+        return 0
+    score = sum(3 if w in text else 0 for w in important[:5])
+    score += sum(1 for w in important[5:] if w in text)
+    summary_terms = [w for w in re.findall(r"[a-z0-9]+", summary) if len(w) > 4 and w not in stop]
+    score += min(3, sum(1 for w in set(summary_terms) if w in text))
+    return score
+
 def get_news_photo(article):
     checked = set()
-    for candidate in image_candidates(article):
+    candidates = image_candidates(article)
+    candidates.sort(key=lambda item: image_relevance_score(article, item), reverse=True)
+    for candidate in candidates:
+        score = image_relevance_score(article, candidate)
+        if score < 2:
+            log.info("Image skipped: weak news-topic match (score=%d, source=%s).", score, candidate.get("source", "unknown"))
+            continue
         url = candidate["url"]
         if url in checked:
             continue
@@ -849,18 +873,29 @@ def prepare_photo(photo):
     """Preserve the original news photo; do not apply filters that can damage detail."""
     return ImageOps.exif_transpose(photo).convert("RGB")
 
-def photo_card(photo, story=False):
-    """Preserve the entire source photograph without cropping or visual filters."""
+def photo_card(photo, headline, category, story=False):
+    """Create a branded news card around the real, relevant source photograph."""
     width, height = (1080, 1920) if story else (1080, 1350)
     source = prepare_photo(photo)
-    # Fit the complete photo inside the social format. A plain dark canvas fills
-    # the remaining space instead of cropping people, buildings, or key details.
     image = Image.new("RGB", (width, height), DARK)
     fitted = ImageOps.contain(source, (width, height), Image.Resampling.LANCZOS)
-    x = (width - fitted.width) // 2
-    y = (height - fitted.height) // 2
+    x, y = (width - fitted.width) // 2, (height - fitted.height) // 2
     image.paste(fitted, (x, y))
-    draw = ImageDraw.Draw(image)
+    draw = ImageDraw.Draw(image, "RGBA")
+    panel_h = 350 if story else 310
+    panel_top = height - panel_h
+    for offset in range(150):
+        alpha = int(175 * (offset / 150))
+        yy = max(0, panel_top - 150 + offset)
+        draw.line((0, yy, width, yy), fill=(0, 0, 0, alpha), width=1)
+    draw.rectangle((0, panel_top, width, height), fill=(5, 10, 9, 225))
+    draw.rounded_rectangle((42, panel_top + 30, 330, panel_top + 82), radius=10, fill=(20, 145, 85, 245))
+    draw.text((60, panel_top + 39), str(category or "PAKISTAN").upper()[:22], font=font(25), fill=WHITE)
+    headline_font, lines, size = fit_lines(draw, headline or "Pakistan Latest News", width - 92, 3, 56, 34)
+    text_y = panel_top + 112
+    for line in lines:
+        draw.text((46, text_y), line, font=headline_font, fill=WHITE, stroke_width=1, stroke_fill=(0, 0, 0, 150))
+        text_y += size + 15
     draw_logo(draw, width - 38, 38)
     return image
 
@@ -940,7 +975,7 @@ def download_image(url):
 def make_graphic(photo, headline, category, story, key):
     if photo is None:
         raise ValueError("A generated or otherwise validated source image is required; text-only graphics are disabled.")
-    image = photo_card(photo, story)
+    image = photo_card(photo, headline, category, story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
 
