@@ -1304,6 +1304,24 @@
       "created": "2026-11-10T04:41:04+00:00",
       "updated": "2026-11-10T04:41:05+00:00",
       "story_due_at": "2026-11-10T04:56:03.788Z"
+    },
+    "50008b80bd94bef47d4231972cafcde2cdacb637b48b4086ab9cd55763313791": {
+      "title": "Saud Shakeel nears century as Pakistan score 390-6 in first Test against Sri Lanka",
+      "headline": "Saud Shakeel 91* as Pakistan reach 390-6 vs Sri Lanka",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af2cefad35dff5701e96f1a",
+      "feed_due_at": "2026-11-10T08:14:54.358Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794297593/bizpakistan/50008b80bd94bef47d423197-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794297593/bizpakistan/50008b80bd94bef47d423197-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af2cefc26f9e6aeeaf21ebd",
+      "created": "2026-11-10T07:59:55+00:00",
+      "updated": "2026-11-10T07:59:56+00:00",
+      "story_due_at": "2026-11-10T08:14:54.358Z"
     }
   },
   "version": 2
