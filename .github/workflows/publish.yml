@@ -1,9 +1,11 @@
 name: Biz Pakistan Auto Publisher
 
 on:
-  # Run 8 times daily, every 3 hours (Pakistan time: 06:00, 09:00, 12:00, 15:00, 18:00, 21:00, 00:00, 03:00).
+  # Start each run 15 minutes before the Buffer publish time (Pakistan time).
+  # Buffer dueAt is set to 15 minutes after the run starts.
+  # Target publish times: 08:00, 11:00, 14:00, 17:00, 20:00 PKT (UTC+5).
   schedule:
-    - cron: "0 1,4,7,10,13,16,19,22 * * *"
+    - cron: "45 2,5,8,11,14 * * *"
   workflow_dispatch:
     inputs:
       max_articles:
@@ -51,7 +53,7 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
           MAX_ARTICLES_PER_RUN: ${{ inputs.max_articles || secrets.MAX_ARTICLES_PER_RUN || vars.MAX_ARTICLES_PER_RUN || '1' }}
-          DAILY_POST_LIMIT: "8"
+          DAILY_POST_LIMIT: "5"
           MAX_REVIEWS_PER_RUN: "20"
           MAX_AGE_HOURS: "24"
           PYTHONUNBUFFERED: "1"
