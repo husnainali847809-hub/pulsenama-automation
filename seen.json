@@ -1364,6 +1364,24 @@
       "created": "2026-11-10T10:46:39+00:00",
       "updated": "2026-11-10T10:46:40+00:00",
       "story_due_at": "2026-11-10T11:01:38.796Z"
+    },
+    "9d1c0de3eb0e32ae19a04897e1be3f940c9bd694c9f48ef41ff144123bb9b166": {
+      "title": "Sri Lanka stumble to 114-3 in reply to Pakistan’s 434-9",
+      "headline": "Sri Lanka Stumble to 114-3 vs Pakistan 434-9",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af31ea1933007bada7bfe76",
+      "feed_due_at": "2026-11-10T13:54:44.880Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794317984/bizpakistan/9d1c0de3eb0e32ae19a04897-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794317983/bizpakistan/9d1c0de3eb0e32ae19a04897-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af31ea2ab43be496989f379",
+      "created": "2026-11-10T13:39:45+00:00",
+      "updated": "2026-11-10T13:39:46+00:00",
+      "story_due_at": "2026-11-10T13:54:44.880Z"
     }
   },
   "version": 2
