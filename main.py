@@ -579,8 +579,7 @@ def image_relevance_score(article, candidate):
     """Rank photos using story keywords and available image metadata."""
     title = clean(article.get("title") or "").lower()
     summary = clean(article.get("summary") or "").lower()
-    text = (clean(candidate.get("image_description") or "") + " " +
-            clean(candidate.get("search_query") or "")).lower()
+    text = clean(candidate.get("image_description") or "").lower()
     stop = STOPWORDS | set("pakistan pakistani says said report reports latest news update updates announces announced".split())
     important = [w for w in re.findall(r"[a-z0-9]+", title) if len(w) > 2 and w not in stop]
     if not important:
