@@ -1476,6 +1476,24 @@
       "created": "2026-11-11T06:42:08+00:00",
       "updated": "2026-11-11T06:42:09+00:00",
       "story_due_at": "2026-11-11T06:57:08.168Z"
+    },
+    "9e944d7a7e9e5ebf6694e5806503efff88185f938f0bf3f98168f8b45f010876": {
+      "title": "De Silva's 87 keeps Sri Lanka fighting against Pakistan",
+      "headline": "De Silva's 87 helps Sri Lanka stay in the match against Pakistan",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af437cd28ad1c1bf4fd9084",
+      "feed_due_at": "2026-11-11T09:54:25.173Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794389964/bizpakistan/9e944d7a7e9e5ebf6694e580-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794389964/bizpakistan/9e944d7a7e9e5ebf6694e580-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af437ce09bdcaff02d6e284",
+      "created": "2026-11-11T09:39:25+00:00",
+      "updated": "2026-11-11T09:39:26+00:00",
+      "story_due_at": "2026-11-11T09:54:25.173Z"
     }
   },
   "version": 2
