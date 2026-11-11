@@ -438,44 +438,51 @@ def openverse_image_candidates(article):
     return candidates
 
 def pexels_image_candidates(article):
-    """Find a relevant, reusable landscape photo through the official Pexels API."""
+    """Search topic-specific real photos via Pexels, preserving reuse attribution."""
     if not PEXELS_API_KEY:
         return []
-    query = clean(article.get("title") or "")[:180]
-    if not query:
+    queries = image_search_queries(article)
+    if not queries:
         return []
-    try:
-        response = http(
-            "GET", "https://api.pexels.com/v1/search",
-            retries=1, timeout=(10, 20),
-            headers={"Authorization": PEXELS_API_KEY},
-            params={"query": query, "per_page": 10, "orientation": "landscape", "size": "large"}
-        )
-        response.raise_for_status()
-        payload = response.json()
-        candidates = []
-        for photo in payload.get("photos", []):
-            src = photo.get("src") or {}
-            image_url = src.get("large2x") or src.get("large") or src.get("original")
-            if not image_url or not image_url.startswith("https://"):
-                continue
-            width, height = int(photo.get("width") or 0), int(photo.get("height") or 0)
-            if width < 1000 or height < 600 or width / max(height, 1) < 1.15:
-                continue
-            candidates.append({
-                "url": image_url,
-                "source": "Pexels",
-                "license": "Pexels License",
-                "license_name": "Pexels License",
-                "license_url": "https://www.pexels.com/license/",
-                "artist": clean(photo.get("photographer") or ""),
-                "source_page": photo.get("url") or ""
-            })
-        log.info("Pexels returned %d suitable image candidates.", len(candidates))
-        return candidates
-    except Exception as exc:
-        log.warning("Pexels image search unavailable: %s", redact(exc))
-        return []
+    candidates, seen = [], set()
+    for query in queries[:3]:
+        if time_left() < 90:
+            break
+        try:
+            response = http(
+                "GET", "https://api.pexels.com/v1/search",
+                retries=1, timeout=(10, 20),
+                headers={"Authorization": PEXELS_API_KEY},
+                params={"query": query[:180], "per_page": 8,
+                        "orientation": "landscape", "size": "large"}
+            )
+            response.raise_for_status()
+            payload = response.json()
+            for photo in payload.get("photos", []):
+                src = photo.get("src") or {}
+                image_url = src.get("large2x") or src.get("large") or src.get("original")
+                if not image_url or not image_url.startswith("https://") or image_url in seen:
+                    continue
+                width, height = int(photo.get("width") or 0), int(photo.get("height") or 0)
+                if width < 1000 or height < 600 or width / max(height, 1) < 1.15:
+                    continue
+                seen.add(image_url)
+                candidates.append({
+                    "url": image_url,
+                    "source": "Pexels",
+                    "license": "Pexels License",
+                    "license_name": "Pexels License",
+                    "license_url": "https://www.pexels.com/license/",
+                    "artist": clean(photo.get("photographer") or ""),
+                    "source_page": photo.get("url") or "",
+                    "image_description": clean(photo.get("alt") or ""),
+                    "search_query": query
+                })
+        except Exception as exc:
+            log.warning("Pexels search unavailable for '%s': %s", query[:70], redact(exc))
+    log.info("Pexels returned %d topic-matched photo candidates across %d queries.",
+             len(candidates), min(3, len(queries)))
+    return candidates
 
 def image_candidates(article):
     results = list(article.get("image_candidates", []))
@@ -880,29 +887,45 @@ def prepare_photo(photo):
     return ImageOps.exif_transpose(photo).convert("RGB")
 
 def photo_card(photo, headline, category, story=False):
-    """Create a branded news card around the real, relevant source photograph."""
+    """Create a clean Facebook news card using the complete real source photo."""
     width, height = (1080, 1920) if story else (1080, 1350)
     source = prepare_photo(photo)
     image = Image.new("RGB", (width, height), DARK)
+    # Fit the entire photograph: never crop a player, person, logo or news detail.
     fitted = ImageOps.contain(source, (width, height), Image.Resampling.LANCZOS)
     x, y = (width - fitted.width) // 2, (height - fitted.height) // 2
     image.paste(fitted, (x, y))
     draw = ImageDraw.Draw(image, "RGBA")
-    panel_h = 350 if story else 310
+
+    panel_h = 430 if story else 390
     panel_top = height - panel_h
-    for offset in range(150):
-        alpha = int(175 * (offset / 150))
-        yy = max(0, panel_top - 150 + offset)
+    # Soft dark fade above the headline keeps text readable without obscuring the photo.
+    for offset in range(190):
+        alpha = int(185 * (offset / 190))
+        yy = max(0, panel_top - 190 + offset)
         draw.line((0, yy, width, yy), fill=(0, 0, 0, alpha), width=1)
-    draw.rectangle((0, panel_top, width, height), fill=(5, 10, 9, 225))
-    draw.rounded_rectangle((42, panel_top + 30, 330, panel_top + 82), radius=10, fill=(20, 145, 85, 245))
-    draw.text((60, panel_top + 39), str(category or "PAKISTAN").upper()[:22], font=font(25), fill=WHITE)
-    headline_font, lines, size = fit_lines(draw, headline or "Pakistan Latest News", width - 92, 3, 56, 34)
+    draw.rectangle((0, panel_top, width, height), fill=(5, 10, 9, 232))
+
+    category_text = str(category or "LATEST NEWS").upper()[:22]
+    pill_font = font(25)
+    pill_width = int(draw.textlength(category_text, font=pill_font)) + 48
+    draw.rounded_rectangle((42, panel_top + 28, min(width - 42, 42 + pill_width), panel_top + 82),
+                           radius=10, fill=(20, 145, 85, 248))
+    draw.text((66, panel_top + 39), category_text, font=pill_font, fill=WHITE)
+
+    headline_font, lines, size = fit_lines(
+        draw, headline or "Latest News", width - 92, 3, 58, 34
+    )
     text_y = panel_top + 112
     for line in lines:
-        draw.text((46, text_y), line, font=headline_font, fill=WHITE, stroke_width=1, stroke_fill=(0, 0, 0, 150))
-        text_y += size + 15
-    draw_logo(draw, width - 38, 38)
+        # Green highlight blocks echo the clean headline treatment in the reference posts.
+        line_width = min(width - 84, int(draw.textlength(line, font=headline_font)) + 28)
+        draw.rectangle((42, text_y - 5, 42 + line_width, text_y + size + 10),
+                       fill=(13, 132, 78, 238))
+        draw.text((56, text_y), line, font=headline_font, fill=WHITE)
+        text_y += size + 18
+
+    draw_logo(draw, width - 38, height - 76)
     return image
 def save_jpeg(image, filename):
     path = WORK_DIR / filename
@@ -979,8 +1002,10 @@ def download_image(url):
 
 def make_graphic(photo, headline, category, story, key):
     if photo is None:
-        raise ValueError("A generated or otherwise validated source image is required; text-only graphics are disabled.")
-    image = photo_card(photo, story)
+        raise ValueError("A verified, topic-relevant real source photo is required; unrelated or text-only graphics are disabled.")
+    # Pass every argument explicitly. The previous call omitted headline/category
+    # and could raise TypeError instead of producing the Facebook image.
+    image = photo_card(photo, headline, category, story=story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
 
