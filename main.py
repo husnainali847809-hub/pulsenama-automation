@@ -1207,7 +1207,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nNews visuals preserve the complete verified source photograph without cropping or filters. Only the Biz Pakistan logo and name are overlaid.\n")
+            summary.write("\nNews visuals use a complete, verified topic-matched real photograph with a category label, readable green-highlighted headline, and Biz Pakistan branding; no random or unlicensed images are used.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
