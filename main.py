@@ -421,12 +421,16 @@ def openverse_image_candidates(article):
                         or not reusable_license(license_code)):
                     continue
                 seen.add(image_url)
+                tags = item.get("tags") or []
+                tag_text = " ".join(clean(tag.get("name") if isinstance(tag, dict) else tag) for tag in tags)
                 candidates.append({
                     "url": image_url, "source": "Openverse", "license": license_code,
                     "license_name": license_code.upper(), "license_url": item.get("license_url") or "",
                     "artist": clean(item.get("creator") or ""),
                     "artist_url": clean(item.get("creator_url") or ""),
                     "source_page": item.get("foreign_landing_url") or item.get("detail_url") or "",
+                    "image_description": " ".join(filter(None, (clean(item.get("title") or ""),
+                        clean(item.get("description") or ""), tag_text))),
                     "search_query": query
                 })
         except (requests.Timeout, requests.ConnectionError) as exc:
@@ -538,6 +542,7 @@ def image_candidates(article):
                                 "license": licence_text, "artist": artist,
                                 "license_name": licence, "license_url": licence_url,
                                 "source_page": "https://commons.wikimedia.org/wiki/" + quote_plus(page.get("title", "")),
+                                "image_description": clean(page.get("title", "")),
                                 "search_query": query_text})
     except Exception as exc:
         log.info("Wikimedia Commons lookup unavailable: %s", redact(exc))
@@ -591,14 +596,16 @@ def validate_photo(data):
     return image
 
 def image_relevance_score(article, candidate):
-    """Rank photos using story keywords and available image metadata."""
+    """Rank real photos by their actual title, alt text and tags."""
     title = clean(article.get("title") or "").lower()
     summary = clean(article.get("summary") or "").lower()
     text = clean(candidate.get("image_description") or "").lower()
-    stop = STOPWORDS | set("pakistan pakistani says said report reports latest news update updates announces announced".split())
+    stop = STOPWORDS | set("pakistan pakistani says said report reports latest news update updates".split())
     important = [w for w in re.findall(r"[a-z0-9]+", title) if len(w) > 2 and w not in stop]
     if not important:
         return 0
+    # Never score against the search query: that would make unrelated search
+    # results appear relevant just because the query repeats the headline.
     score = sum(3 if w in text else 0 for w in important[:5])
     score += sum(1 for w in important[5:] if w in text)
     summary_terms = [w for w in re.findall(r"[a-z0-9]+", summary) if len(w) > 4 and w not in stop]
@@ -891,10 +898,11 @@ def photo_card(photo, headline, category, story=False):
     width, height = (1080, 1920) if story else (1080, 1350)
     source = prepare_photo(photo)
     image = Image.new("RGB", (width, height), DARK)
-    # Fit the entire photograph: never crop a player, person, logo or news detail.
-    fitted = ImageOps.contain(source, (width, height), Image.Resampling.LANCZOS)
-    x, y = (width - fitted.width) // 2, (height - fitted.height) // 2
-    image.paste(fitted, (x, y))
+    # Full-bleed photo layout like the supplied Facebook references. Crop to
+    # the post ratio with a slightly high focal point so faces/action stay visible.
+    fitted = ImageOps.fit(source, (width, height), method=Image.Resampling.LANCZOS,
+                          centering=(0.5, 0.38))
+    image.paste(fitted, (0, 0))
     draw = ImageDraw.Draw(image, "RGBA")
 
     panel_h = 500 if story else 450
@@ -1086,11 +1094,22 @@ def similar(first, second):
 
 def select_candidates(articles, state):
     cutoff = now() - timedelta(hours=MAX_AGE_HOURS)
-    fresh = [article for article in articles if article["key"] not in state["articles"] and
-             (article["published_dt"] is None or article["published_dt"] >= cutoff)]
+    fresh = [
+        article for article in articles
+        if (
+            article["key"] not in state["articles"]
+            or (
+                state["articles"][article["key"]].get("feed") == "no_image"
+                and parse_date(state["articles"][article["key"]].get("retry_after", "")) is not None
+                and parse_date(state["articles"][article["key"]].get("retry_after", "")) <= now()
+            )
+        )
+        and (article["published_dt"] is None or article["published_dt"] >= cutoff)
+    ]
     fresh.sort(key=lambda article: article["published_dt"] or datetime(1970, 1, 1, tzinfo=timezone.utc), reverse=True)
     history = sorted(state["articles"].values(), key=lambda record: record.get("updated", ""), reverse=True)[:200]
-    old_titles = [tokens(record.get("title", "")) for record in history if record.get("title")]
+    old_titles = [tokens(record.get("title", "")) for record in history
+                  if record.get("title") and record.get("feed") != "no_image"]
     unique = []
     for article in fresh:
         title_tokens = tokens(article["title"])
@@ -1133,9 +1152,12 @@ def process_article(article, state, stats):
     # abstract AI colour blobs or a text-only fallback when no suitable photo exists.
     photo, source_url = get_news_photo(article)
     if photo is None:
-        state["articles"][key] = {"title": article["title"], "bucket": article["bucket"],
-                                  "feed": "no_image", "story": "skipped",
-                                  "created": iso(), "updated": iso()}
+        state["articles"][key] = {
+            "title": article["title"], "bucket": article["bucket"],
+            "feed": "no_image", "story": "skipped",
+            "created": iso(), "updated": iso(),
+            "retry_after": (now() + timedelta(hours=6)).isoformat(timespec="seconds")
+        }
         save_state(state)
         stats["no_image"] += 1
         log.warning("Article skipped: no suitable reusable news photo was found.")
