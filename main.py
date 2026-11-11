@@ -897,7 +897,7 @@ def photo_card(photo, headline, category, story=False):
     image.paste(fitted, (x, y))
     draw = ImageDraw.Draw(image, "RGBA")
 
-    panel_h = 430 if story else 390
+    panel_h = 500 if story else 450
     panel_top = height - panel_h
     # Soft dark fade above the headline keeps text readable without obscuring the photo.
     for offset in range(190):
