@@ -1100,8 +1100,10 @@ def select_candidates(articles, state):
             article["key"] not in state["articles"]
             or (
                 state["articles"][article["key"]].get("feed") == "no_image"
-                and parse_date(state["articles"][article["key"]].get("retry_after", "")) is not None
-                and parse_date(state["articles"][article["key"]].get("retry_after", "")) <= now()
+                and (
+                    parse_date(state["articles"][article["key"]].get("retry_after", "")) is None
+                    or parse_date(state["articles"][article["key"]].get("retry_after", "")) <= now()
+                )
             )
         )
         and (article["published_dt"] is None or article["published_dt"] >= cutoff)
