@@ -189,7 +189,7 @@ FEEDS = [
     direct_feed("Dawn Sport", "https://www.dawn.com/feeds/sport", "cricket"),
     direct_feed("Express Tribune", "https://tribune.com.pk/feed/home", "pakistan"),
 ]
-CATEGORY = {"breaking":"BREAKING", "pakistan":"PAKISTAN", "politics":"POLITICS", "business":"BUSINESS", "technology":"TECHNOLOGY", "cricket":"CRICKET", "sports":"SPORTS", "entertainment":"ENTERTAINMENT", "education":"EDUCATION", "health":"HEALTH"}
+CATEGORY = {"breaking":"BREAKING", "world":"WORLD", "pakistan":"PAKISTAN", "politics":"POLITICS", "business":"BUSINESS", "technology":"TECHNOLOGY", "cricket":"CRICKET", "sports":"SPORTS", "entertainment":"ENTERTAINMENT", "science":"SCIENCE", "education":"EDUCATION", "health":"HEALTH"}
 
 def lname(tag):
     return tag.rsplit("}", 1)[-1].lower() if isinstance(tag, str) else ""
