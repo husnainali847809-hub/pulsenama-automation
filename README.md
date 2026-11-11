@@ -10,9 +10,9 @@ The publisher reviews fresh candidates, removes duplicates, balances categories 
 
 ## Facebook post design
 
-Each Feed and Story graphic uses a real, topic-relevant photograph. The full photo is fitted into the design without cropping important people or details. A clean dark lower panel carries a readable category label and a short headline highlighted in green, with Biz Pakistan branding. The caption includes a factual summary, original news source, image attribution where required, and relevant hashtags.
+Each Feed graphic uses a full-bleed landscape real photograph; each Story uses a vertical version of the same image-only design. The only overlay is the Biz Pakistan logo and channel name. No headline, category label, Breaking badge, slogan, dark text panel, gradients, or decorative graphics are placed over the photograph. The post caption carries the factual summary, original news source, image attribution where required, and relevant hashtags.
 
-The image renderer passes the headline, category, and Feed/Story layout explicitly. If a suitable real photo with verified commercial reuse rights cannot be found, the article is skipped rather than posted with a random, unrelated, or low-quality image.
+The image renderer uses separate landscape Feed and vertical Story dimensions while keeping the real photograph as the entire background. If a suitable real photo with verified commercial reuse rights cannot be found, the article is skipped rather than posted with a random, unrelated, AI-generated, or low-quality image.
 
 ## Image sources and reuse
 
