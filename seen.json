@@ -1458,6 +1458,24 @@
       "created": "2026-11-11T03:34:48+00:00",
       "updated": "2026-11-11T03:34:49+00:00",
       "story_due_at": "2026-11-11T03:49:48.156Z"
+    },
+    "25465ff56bc3b233da2fe5d62d9083a167d34b4c0f7ea6a633d64abac69eb03e": {
+      "title": "PCB announces venue change for 2nd Pakistan-Sri Lanka Test, dates remain unchanged",
+      "headline": "PCB changes venue for 2nd Pakistan‑Sri Lanka Test, dates unchanged",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af40e401da76fd3d2c788b4",
+      "feed_due_at": "2026-11-11T06:57:08.168Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794379327/bizpakistan/25465ff56bc3b233da2fe5d6-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794379326/bizpakistan/25465ff56bc3b233da2fe5d6-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af40e419a3abc82a1d5541a",
+      "created": "2026-11-11T06:42:08+00:00",
+      "updated": "2026-11-11T06:42:09+00:00",
+      "story_due_at": "2026-11-11T06:57:08.168Z"
     }
   },
   "version": 2
