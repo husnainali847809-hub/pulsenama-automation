@@ -1440,6 +1440,24 @@
       "created": "2026-11-10T14:05:04+00:00",
       "updated": "2026-11-10T14:05:06+00:00",
       "story_due_at": "2026-11-10T14:20:04.375Z"
+    },
+    "e4f7f7362b9bafcfe3b3a4cadd6a27ddd22845945b3957b006bf8b7d5cd6d14b": {
+      "title": "Heavy Smog In Lahore Forces Pakistan To Shift 2nd Test Vs Sri Lanka To Rawalpindi",
+      "headline": "Smog in Lahore Moves Pakistan-Sri Lanka 2nd Test to Rawalpindi",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af3e2586a689e197d2020f1",
+      "feed_due_at": "2026-11-11T03:49:48.156Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794368087/bizpakistan/e4f7f7362b9bafcfe3b3a4ca-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794368086/bizpakistan/e4f7f7362b9bafcfe3b3a4ca-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af3e25961555afe9ef572bc",
+      "created": "2026-11-11T03:34:48+00:00",
+      "updated": "2026-11-11T03:34:49+00:00",
+      "story_due_at": "2026-11-11T03:49:48.156Z"
     }
   },
   "version": 2
