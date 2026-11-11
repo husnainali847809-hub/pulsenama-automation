@@ -991,8 +991,8 @@ def download_image(url):
 def make_graphic(photo, headline, category, story, key):
     if photo is None:
         raise ValueError("A verified, topic-relevant real source photo is required; unrelated or text-only graphics are disabled.")
-    # Pass every argument explicitly. The previous call omitted headline/category
-    # and could raise TypeError instead of producing the Facebook image.
+    # headline/category remain accepted for backward compatibility, but the
+    # renderer deliberately does not place them over the photograph.
     image = photo_card(photo, headline, category, story=story)
     filename = f"{key[:16]}-{'story' if story else 'feed'}.jpg"
     return save_jpeg(image, filename)
