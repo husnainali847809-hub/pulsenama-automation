@@ -893,48 +893,28 @@ def prepare_photo(photo):
     """Preserve the original news photo; do not apply filters that can damage detail."""
     return ImageOps.exif_transpose(photo).convert("RGB")
 
-def photo_card(photo, headline, category, story=False):
-    """Create a clean Facebook news card using the complete real source photo."""
-    width, height = (1080, 1920) if story else (1080, 1350)
+def photo_card(photo, headline=None, category=None, story=False):
+    """Render the real news photograph full-bleed; overlay only Biz Pakistan branding."""
+    # Feed posts are landscape, matching the supplied reference style.
+    # Stories remain vertical, with the same image-only visual treatment.
+    width, height = (1080, 1920) if story else (1200, 675)
     source = prepare_photo(photo)
-    image = Image.new("RGB", (width, height), DARK)
-    # Full-bleed photo layout like the supplied Facebook references. Crop to
-    # the post ratio with a slightly high focal point so faces/action stay visible.
-    fitted = ImageOps.fit(source, (width, height), method=Image.Resampling.LANCZOS,
-                          centering=(0.5, 0.38))
-    image.paste(fitted, (0, 0))
+    fitted = ImageOps.fit(
+        source,
+        (width, height),
+        method=Image.Resampling.LANCZOS,
+        centering=(0.5, 0.42)
+    )
+    image = fitted.copy()
     draw = ImageDraw.Draw(image, "RGBA")
 
-    panel_h = 500 if story else 450
-    panel_top = height - panel_h
-    # Soft dark fade above the headline keeps text readable without obscuring the photo.
-    for offset in range(190):
-        alpha = int(185 * (offset / 190))
-        yy = max(0, panel_top - 190 + offset)
-        draw.line((0, yy, width, yy), fill=(0, 0, 0, alpha), width=1)
-    draw.rectangle((0, panel_top, width, height), fill=(5, 10, 9, 232))
-
-    category_text = str(category or "LATEST NEWS").upper()[:22]
-    pill_font = font(25)
-    pill_width = int(draw.textlength(category_text, font=pill_font)) + 48
-    draw.rounded_rectangle((42, panel_top + 28, min(width - 42, 42 + pill_width), panel_top + 82),
-                           radius=10, fill=(20, 145, 85, 248))
-    draw.text((66, panel_top + 39), category_text, font=pill_font, fill=WHITE)
-
-    headline_font, lines, size = fit_lines(
-        draw, headline or "Latest News", width - 92, 3, 58, 34
-    )
-    text_y = panel_top + 112
-    for line in lines:
-        # Green highlight blocks echo the clean headline treatment in the reference posts.
-        line_width = min(width - 84, int(draw.textlength(line, font=headline_font)) + 28)
-        draw.rectangle((42, text_y - 5, 42 + line_width, text_y + size + 10),
-                       fill=(13, 132, 78, 238))
-        draw.text((56, text_y), line, font=headline_font, fill=WHITE)
-        text_y += size + 18
-
-    draw_logo(draw, width - 38, height - 76)
+    # No headline, category, breaking badge, slogan, gradients or decorative
+    # panels are placed over the photograph. The brand mark is the only overlay.
+    logo_right = width - 30
+    logo_top = height - (105 if story else 72)
+    draw_logo(draw, logo_right, logo_top)
     return image
+
 def save_jpeg(image, filename):
     path = WORK_DIR / filename
     image.save(path, "JPEG", quality=96, subsampling=0, optimize=True)
@@ -1231,7 +1211,7 @@ def write_summary(stats):
             for key, value in stats.items():
                 summary.write(f"- {key}: {value}\n")
             summary.write("\nBuffer queued means accepted into Buffer, not confirmed published by Facebook.\n")
-            summary.write("\nNews visuals use a complete, verified topic-matched real photograph with a category label, readable green-highlighted headline, and Biz Pakistan branding; no random or unlicensed images are used.\n")
+            summary.write("\nNews visuals use a full-bleed landscape, verified topic-matched real photograph with only the Biz Pakistan logo and channel name overlaid; no headline, category badge, extra graphics, random or unlicensed images are used.\n")
     except OSError:
         log.warning("Could not write GitHub Actions summary.")
 
@@ -1260,7 +1240,7 @@ def main():
         run_post_limit = min(MAX_POSTS, remaining_today)
         log.info("Biz Pakistan | worldwide multi-category coverage | OpenRouter=%s | max posts this run=%d | daily target=%d | queued today=%d | balanced categories | stories=%s | history=%d",
                  OPENROUTER_MODEL, run_post_limit, DAILY_POST_LIMIT, already_today, ENABLE_STORIES, len(state["articles"]))
-        log.info("Image mode: topic-matched, reuse-cleared real photos with a category label, concise headline and Biz Pakistan branding.")
+        log.info("Image mode: full-bleed landscape real photos; only Biz Pakistan logo/name overlay.")
         retry_stories(state, stats)
         candidates = select_candidates(fetch_news(), state)
         log.info("%d fresh candidates after filtering.", len(candidates))
