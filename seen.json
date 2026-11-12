@@ -1616,6 +1616,74 @@
       "created": "2026-11-12T06:44:17+00:00",
       "updated": "2026-11-12T06:44:18+00:00",
       "story_due_at": "2026-11-12T06:59:16.939Z"
+    },
+    "94250c43d9c09c75f66c572de8fe981f2dada6699fdd5848c1378f6410b62a9b": {
+      "title": "Does Canada Have What it Takes to Break With Its Past to Become an “Energy Superpower”? - A Hemispheric Rupture and Global Realignment - Part 5 of 5 - Ron Wallace",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T09:38:00+00:00",
+      "updated": "2026-11-12T09:38:00+00:00"
+    },
+    "70d194f4949afa4783e6b9807e16a03abf848ea8a04b9aeb9d3fefa26ecbccd3": {
+      "title": "NITDA DG Calls for Transition from Certificate Economy to Capability Economy",
+      "bucket": "science",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T09:38:02+00:00",
+      "updated": "2026-11-12T09:38:02+00:00"
+    },
+    "46041c380b363c8c3ec0990bcc74a06fc0ad76602d4ca3cdc460800c65842679": {
+      "title": "AWS commits US$100m to expand AI in healthcare",
+      "bucket": "health",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T09:38:29+00:00",
+      "updated": "2026-11-12T09:38:29+00:00",
+      "retry_after": "2026-11-12T15:38:29+00:00"
+    },
+    "a6473c2e68dc14a3453b25d4362c21bff729c35591153687c9ee9d2a7f440d66": {
+      "title": "At COP31, PM Shehbaz calls for grant-based finance, resilience funding for climate-vulnerable countries",
+      "bucket": "pakistan",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T09:38:53+00:00",
+      "updated": "2026-11-12T09:38:53+00:00",
+      "retry_after": "2026-11-12T15:38:53+00:00"
+    },
+    "e338419f6dee40f1d1b62aa550024e441fa9a2b1e407db5cb767c3fec1460a91": {
+      "title": "Climate Adaptation Market: $1.3 Trillion Opportunity",
+      "bucket": "business",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T09:39:43+00:00",
+      "updated": "2026-11-12T09:39:43+00:00"
+    },
+    "4b85a9f7d4020df3ad65e27ab77c67e04e63f6c43c35baf6b09f0508f9263e54": {
+      "title": "Balnord urges Europe to scale deep-tech for defence",
+      "bucket": "technology",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T09:39:52+00:00",
+      "updated": "2026-11-12T09:39:52+00:00"
+    },
+    "3299a0ef916b026000894d5e755be8035f46d4f75e835730ec50087bbdd12251": {
+      "title": "The University of Social Sciences and Humanities promotes comprehensive cooperation with Guangxi University (China).",
+      "headline": "University of Social Sciences and Humanities to cooperate with Guangxi University",
+      "bucket": "education",
+      "category": "EDUCATION",
+      "feed": "queued",
+      "feed_post_id": "6af5898bbe2095778d9d1ee9",
+      "feed_due_at": "2026-11-12T09:55:27.477Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794476427/bizpakistan/3299a0ef916b026000894d5e-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794476425/bizpakistan/3299a0ef916b026000894d5e-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af5898d5edf04f414e969e5",
+      "created": "2026-11-12T09:40:27+00:00",
+      "updated": "2026-11-12T09:40:29+00:00",
+      "story_due_at": "2026-11-12T09:55:27.477Z"
     }
   },
   "version": 2
