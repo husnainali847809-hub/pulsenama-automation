@@ -1580,6 +1580,24 @@
       "created": "2026-11-11T12:43:00+00:00",
       "updated": "2026-11-11T12:43:01+00:00",
       "story_due_at": "2026-11-11T12:57:59.704Z"
+    },
+    "b868d3422f152075fc08482688816216c3a856ffc9637382eb6961e4d445ec92": {
+      "title": "Anthony Clark, ‘Yes, Dear’ and ‘Boston Common’ star, dies at 62",
+      "headline": "Actor Anthony Clark, star of ‘Yes, Dear’ and ‘Boston Common’, dies at 62",
+      "bucket": "entertainment",
+      "category": "ENTERTAINMENT",
+      "feed": "queued",
+      "feed_post_id": "6af533668a1a2f52b51ebdbb",
+      "feed_due_at": "2026-11-12T03:47:54.564Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794454374/bizpakistan/b868d3422f152075fc084826-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794454373/bizpakistan/b868d3422f152075fc084826-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af53368bc9f3773a1badd9e",
+      "created": "2026-11-12T03:32:55+00:00",
+      "updated": "2026-11-12T03:32:56+00:00",
+      "story_due_at": "2026-11-12T03:47:54.564Z"
     }
   },
   "version": 2
