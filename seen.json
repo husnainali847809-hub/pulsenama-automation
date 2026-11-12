@@ -1727,6 +1727,97 @@
       "story": "skipped",
       "created": "2026-11-12T12:43:03+00:00",
       "updated": "2026-11-12T12:43:03+00:00"
+    },
+    "dcb0ef6d6cdf994d765111beed0b44eb01b96f4b8c9ec427d3a5ea9c740c42be": {
+      "title": "Trumpism Will Survive the Democrats’ Midterm Victory, Warns Mike Bedenbaugh",
+      "bucket": "politics",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:40:16+00:00",
+      "updated": "2026-11-12T15:40:16+00:00"
+    },
+    "fcfd4cc10ae447031289c90bc49060528909710ba7ec28dfe3a201deb588bddd": {
+      "title": "Naqvi suggests referendum as 'solution' to debate on new administrative units",
+      "bucket": "pakistan",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T15:41:48+00:00",
+      "updated": "2026-11-12T15:41:48+00:00",
+      "retry_after": "2026-11-12T21:41:48+00:00"
+    },
+    "e1da39149571cb5c833a6c9670f2dcfb81246865268ea5884d90266c1b48cab8": {
+      "title": "INDROTEK Positions Its Robotics Division at the Forefront of Canada's Growing Dual-Use Technology and Defense Industrial Opportunities",
+      "bucket": "technology",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:42:04+00:00",
+      "updated": "2026-11-12T15:42:04+00:00"
+    },
+    "1a77a2e61158c2e17eb3d87221cc5e805cc6a4c92317b2a4a98dfb6fc961a992": {
+      "title": "ICRC: We are currently classifying the highest number of armed conflicts since the Second World War - Spotlight",
+      "bucket": "world",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:42:24+00:00",
+      "updated": "2026-11-12T15:42:24+00:00"
+    },
+    "b7c24701669a60ea19d63d8d0169b1a52224c111d06dc52ff309c48ffec5718b": {
+      "title": "BBC Boss: TV \"Behind\" Others In Tackling Power Abuses By Stars",
+      "bucket": "entertainment",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:42:28+00:00",
+      "updated": "2026-11-12T15:42:28+00:00"
+    },
+    "4b17fa99c7f3af230aeef089d0146afcec3c72aaa5fe787a82086264000eef19": {
+      "title": "Jensen Huang Has Been Ousted as Nvidia CEO",
+      "bucket": "business",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:43:09+00:00",
+      "updated": "2026-11-12T15:43:09+00:00"
+    },
+    "e8313ff2052898cc24bc6398727cb85783e08a38fd462d3ff9e3caa4141d37cf": {
+      "title": "Global DNA Survey Reveals Many Protists Lack Named Relatives",
+      "bucket": "science",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:43:13+00:00",
+      "updated": "2026-11-12T15:43:13+00:00"
+    },
+    "2366f9e59bf5f3f33784df292bdaade5a581cf1cd263e30bb88fc9654ceb8c5d": {
+      "title": "Ranking top 10 NFL deadline trades by how they’ll impact 2026 playoff picture",
+      "bucket": "sports",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:43:15+00:00",
+      "updated": "2026-11-12T15:43:15+00:00"
+    },
+    "63b454e33eb2a433b9cfc67ccff3df3ea2a776494fef987828ac21952acfe2ca": {
+      "title": "College students with disabilities may soon face less red tape",
+      "bucket": "education",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T15:43:35+00:00",
+      "updated": "2026-11-12T15:43:35+00:00"
+    },
+    "32f683497e1af5224c6c0ba44b75e4b59225da29f3a77d3c6753ff17fb294671": {
+      "title": "Rizwan, Imam-ul-Haq cleared for domestic cricket return as Pakistan investigation nears end",
+      "headline": "Rizwan, Imam-ul-Haq cleared for domestic cricket return",
+      "bucket": "cricket",
+      "category": "CRICKET",
+      "feed": "queued",
+      "feed_post_id": "6af5dece724da55e8bda4c81",
+      "feed_due_at": "2026-11-12T15:59:14.212Z",
+      "feed_image_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794498253/bizpakistan/32f683497e1af5224c6c0ba4-feed.jpg",
+      "photo_mode": "licensed",
+      "original_photo_url": "https://res.cloudinary.com/gcqn2ql6/image/upload/v1794498253/bizpakistan/32f683497e1af5224c6c0ba4-source.jpg",
+      "story": "queued",
+      "story_attempts": 1,
+      "story_post_id": "6af5ded064527dadb8a26d9f",
+      "created": "2026-11-12T15:44:14+00:00",
+      "updated": "2026-11-12T15:44:16+00:00",
+      "story_due_at": "2026-11-12T15:59:14.212Z"
     }
   },
   "version": 2
