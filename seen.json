@@ -1684,6 +1684,49 @@
       "created": "2026-11-12T09:40:27+00:00",
       "updated": "2026-11-12T09:40:29+00:00",
       "story_due_at": "2026-11-12T09:55:27.477Z"
+    },
+    "b0d2272a7f25c9e8102bb72a214baf99137cbf6268938db7fcaa48e0b82fc853": {
+      "title": "Dar-e-Nijaat director shares story behind Abu Bakar’s rooftop bedroom",
+      "bucket": "entertainment",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T12:39:54+00:00",
+      "updated": "2026-11-12T12:39:54+00:00"
+    },
+    "242b57dd87a5a81acc714172a7847beb36b2e70911e99989755b48d4b33bdffd": {
+      "title": "Kraft Heinz Outlines Path to Sustainable, Profitable Growth at 2026 Investor Day – Company Announcement",
+      "bucket": "business",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T12:40:33+00:00",
+      "updated": "2026-11-12T12:40:33+00:00",
+      "retry_after": "2026-11-12T18:40:33+00:00"
+    },
+    "e74859e5dda4891a8fd7e5523e316f8b2fc2c33c2bbcd02a76f1170940f0f4cd": {
+      "title": "FIFA Imposes Three-Window Transfer Ban on Wydad Casablanca",
+      "bucket": "sports",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T12:41:00+00:00",
+      "updated": "2026-11-12T12:41:00+00:00",
+      "retry_after": "2026-11-12T18:41:00+00:00"
+    },
+    "46e0a79c11f1f0d6d71a1f98017449d2ff877d64133b91a0b94e6f3bfbe5bf39": {
+      "title": "China accuses US of 'fabricating' Nvidia spy claims to push tech 'blockade'",
+      "bucket": "breaking",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-12T12:42:08+00:00",
+      "updated": "2026-11-12T12:42:08+00:00",
+      "retry_after": "2026-11-12T18:42:08+00:00"
+    },
+    "0a6219aa849e44ddb1a9e18aa2dc44c10daa6b4908ccf1857e1b22f84a4e2bfc": {
+      "title": "UK Regulator Urges Universities to Bring Back Traditional Exams Amid AI Cheating Concerns",
+      "bucket": "education",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-12T12:43:03+00:00",
+      "updated": "2026-11-12T12:43:03+00:00"
     }
   },
   "version": 2
