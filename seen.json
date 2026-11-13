@@ -1844,6 +1844,30 @@
       "created": "2026-11-13T06:42:26+00:00",
       "updated": "2026-11-13T06:42:27+00:00",
       "story_due_at": "2026-11-13T06:57:25.941Z"
+    },
+    "6af70b99c8a79e1c34c2212ea18df5fe656c81bb9cce8f8906d91ae8e5f0b449": {
+      "title": "WHO estimates of the global, regional, and national burden of 42 foodborne infectious and chemical hazards, 2000–21: an updated data synthesis",
+      "bucket": "health",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-13T09:39:21+00:00",
+      "updated": "2026-11-13T09:39:21+00:00"
+    },
+    "52b035dba08901e8ea9ad39549d525f7de8c3c598b95b92914b15fc5ba1cd13c": {
+      "title": "From Offices To Airports: How A Microsoft Outage Can Disrupt Global Economy",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-13T09:39:23+00:00",
+      "updated": "2026-11-13T09:39:23+00:00"
+    },
+    "4a46ecd16676196261b0c6220dc2847a8d95498d4b1c5d3c8c9bd92995cf494c": {
+      "title": "In French Election, Centrists Eye a Judo Star and a Central Banker",
+      "bucket": "politics",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-13T09:39:37+00:00",
+      "updated": "2026-11-13T09:39:37+00:00"
     }
   },
   "version": 2
