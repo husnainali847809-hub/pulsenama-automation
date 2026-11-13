@@ -1221,7 +1221,7 @@ def process_article(article, state, stats):
         video_text = f'{copy["headline"]}\\n\\n{copy["caption"]}\\n\\n{" ".join(copy["hashtags"])}'
         due = (now() + timedelta(minutes=15)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
         try:
-            post = buffer_post(video_text, video_url, "reel", due, asset_type="video")
+            post = buffer_post(video_text, video_url, "post", due, asset_type="video")
         except BufferAmbiguous as exc:
             state["articles"][key] = {"title": article["title"], "headline": copy["headline"],
                 "bucket": article["bucket"], "feed": "unconfirmed", "story": "skipped",
