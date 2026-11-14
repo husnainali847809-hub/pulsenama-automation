@@ -12,7 +12,7 @@ PIXABAY=os.getenv("PIXABAY_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
 # Automatically choose creative settings; no workflow questions.
 MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
-LANG="English"
+LANG=random.choice(["English","Urdu"])
 DURATION=random.choice([18,20,22,24])
 OUT,WORK=Path("poetry_demo.mp4"),Path("poetry_demo_work")
 WORK.mkdir(exist_ok=True)
@@ -47,9 +47,11 @@ def fallback_poem():
 def make_poem():
     if not KEY:
         raise RuntimeError("Missing OPENROUTER_API_KEY GitHub secret.")
-    prompt=f"""Write a completely original short {LANG} poem for a {MOOD} cinematic vertical video.
-Return ONLY valid JSON: {{"title":"short title","lines":["short poetic line 1","short poetic line 2"]}}.
-Write only 2 or 3 short lines total (never more than 3), natural and emotionally powerful. No quotes, emojis or explanation."""
+    prompt=f"""Create text for a {MOOD} cinematic vertical poetry video in {LANG}.
+Randomly choose ONE format: (A) a beautiful original 2-3 line poem, (B) a memorable quote, or (C) a famous, accurately attributed public-domain literary/poetry line.
+Use well-known poets/writers where appropriate, but NEVER invent a famous author or falsely attribute words. If unsure of exact wording or attribution, write an original line instead.
+Return ONLY valid JSON: {{"title":"short title","lines":["short line 1","short line 2","optional short attribution or third line"]}}.
+Use 2 or 3 short lines total, emotionally strong and easy to read on a phone. No paragraphs, no explanations, no decorative quote marks, no emojis. Keep every line concise enough to fit on a 1080x1920 video. For Urdu, write proper Urdu script; for English, write natural English."""
     try:
         r=requests.post("https://openrouter.ai/api/v1/chat/completions",
           headers={"Authorization":f"Bearer {KEY}","Content-Type":"application/json"},
@@ -472,11 +474,27 @@ def generated_background():
     return path
 
 def get_font(size):
-    for p in ("/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
+    # Use a real Latin font for English and an Arabic-script font for Urdu.
+    # Pillow's tiny bitmap default font does not contain these glyphs and shows boxes.
+    if LANG.lower() == "urdu":
+        candidates = [
+          "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
+          "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
+          "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+    else:
+        candidates = [
+          "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+          "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+          "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        ]
+    for p in candidates:
         if Path(p).exists():
-            try: return ImageFont.truetype(p,size)
-            except Exception: pass
-    return ImageFont.load_default()
+            try:
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+    raise RuntimeError("Required text font is missing; install DejaVu Sans and Noto Arabic fonts.")
 
 def text_page_png(title, lines):
     """Fit short poetry neatly inside the safe area, like the supplied reference reel."""
@@ -556,65 +574,65 @@ def text_page_png(title, lines):
 
 
 def get_online_music():
-    """Find a reusable instrumental audio track on Wikimedia Commons.
-    Find an audio track and record its source details."""
+    """Find a mood-matched song with actual singing/vocals; never choose an instrumental."""
     global BACKGROUND_CREDIT
     terms = {
-      "sad":"ambient piano instrumental melancholic music",
-      "romantic":"romantic piano instrumental music",
-      "motivational":"uplifting instrumental orchestral music",
-      "deep":"ambient cinematic instrumental music",
-      "peaceful":"calm piano ambient instrumental music",
-      "rain":"soft piano ambient instrumental music",
-      "memories":"nostalgic piano instrumental music",
-    }.get(MOOD, "cinematic ambient instrumental music")
+      "sad": "sad emotional vocal song singing",
+      "romantic": "romantic love song vocals singer",
+      "motivational": "uplifting inspirational song vocals singer",
+      "deep": "soulful deep vocal song singing",
+      "peaceful": "soft acoustic song vocals singer",
+      "rain": "melancholic vocal song singing",
+      "memories": "nostalgic song vocals singer",
+    }.get(MOOD, "emotional vocal song singer")
     try:
         params={"action":"query","format":"json","generator":"search",
-          "gsrsearch":terms,"gsrnamespace":6,"gsrlimit":30,
+          "gsrsearch":terms,"gsrnamespace":6,"gsrlimit":40,
           "prop":"imageinfo","iiprop":"url|mime|extmetadata"}
         r=requests.get("https://commons.wikimedia.org/w/api.php",params=params,
-          headers={"User-Agent":"PulsenamaPoetryVideo/1.0 (music attribution recorded)"},timeout=30)
+          headers={"User-Agent":"PulsenamaPoetryVideo/1.0"},timeout=30)
         r.raise_for_status()
         pages=list(((r.json().get("query") or {}).get("pages") or {}).values())
         candidates=[]
         for page in pages:
             info=(page.get("imageinfo") or [{}])[0]
             mime=(info.get("mime") or "").lower()
-            meta=info.get("extmetadata") or {}
-            if not mime.startswith("audio/"): continue
             url=info.get("url")
-            if url: candidates.append((page,info,lic,url))
+            if mime.startswith("audio/") and url:
+                candidates.append((page,info,url))
         random.shuffle(candidates)
-        for page,info,lic,url in candidates:
+        for page,info,url in candidates:
             try:
                 ext=Path(url.split("?")[0]).suffix.lower()
-                if ext not in (".ogg",".oga",".mp3",".wav",".flac",".m4a"): continue
-                path=WORK/("online_music"+ext)
+                if ext not in (".ogg",".oga",".mp3",".wav",".flac",".m4a"):
+                    continue
+                path=WORK/("vocal_song"+ext)
                 with requests.get(url,stream=True,timeout=90,
                   headers={"User-Agent":"PulsenamaPoetryVideo/1.0","Referer":"https://commons.wikimedia.org/"}) as response:
                     response.raise_for_status()
                     with path.open("wb") as out:
                         for chunk in response.iter_content(256*1024):
                             if chunk: out.write(chunk)
-                if path.stat().st_size < 30000:
-                    path.unlink(missing_ok=True); continue
-                # Confirm FFmpeg can decode it before accepting the candidate.
-                probe=subprocess.run(["ffmpeg","-v","error","-i",str(path),"-t","1","-f","null","-"],
+                if path.stat().st_size < 50000:
+                    path.unlink(missing_ok=True)
+                    continue
+                probe=subprocess.run(["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
                   stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
                 if probe.returncode != 0:
-                    path.unlink(missing_ok=True); continue
+                    path.unlink(missing_ok=True)
+                    continue
+                title=page.get("title","Vocal song")
                 meta=info.get("extmetadata") or {}
-                artist=(meta.get("Artist") or {}).get("value","Unknown creator")
-                title=page.get("title","Audio track")
+                artist=(meta.get("Artist") or {}).get("value","Unknown singer")
                 page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
-                BACKGROUND_CREDIT += f"\nMusic: Wikimedia Commons {title} | Creator: {artist} | {page_url}"
-                print(f"Using online instrumental candidate: {title}.")
+                BACKGROUND_CREDIT += f"\\nSong: {title} | Singer/creator: {artist} | {page_url}"
+                print(f"Using a mood-matched song with vocals: {title}.")
                 return path
             except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
-                print(f"Audio candidate unavailable; trying another: {exc}")
+                print(f"Song candidate unavailable; trying another: {exc}")
                 continue
     except (requests.RequestException,ValueError,KeyError,OSError) as exc:
-        print(f"Commons music search unavailable; creating a fresh original instrumental: {exc}")
+        print(f"Online vocal-song search failed: {exc}")
     return None
 
 def make_mood_music(title, lines):
@@ -745,7 +763,9 @@ def main():
         bg=get_unsplash_image()
     if bg is None:
         raise RuntimeError("No usable internet photo/video could be downloaded from Pexels, Pixabay, Wikimedia Commons, or Unsplash. Check API keys/network access and retry; no AI image will be generated.")
-    music=make_mood_music(title,lines)
+    music=get_online_music()
+    if music is None:
+        raise RuntimeError("No suitable song with vocals was found online for this mood. Retry the workflow; instrumental-only music is intentionally disabled.")
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
