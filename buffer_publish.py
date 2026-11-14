@@ -30,27 +30,27 @@ def main():
         poem = []
     caption = "\n".join([title, *poem]).strip() or "A new poetry video from Pulsenama."
 
-    query = """
-    mutation CreatePost($input: CreatePostInput!) {
-      createPost(input: $input) {
-        ... on PostActionSuccess {
-          post { id text dueAt status }
-        }
-        ... on MutationError {
+    query = f"""
+    mutation CreatePost {{
+      createPost(input: {{
+        text: {JSON.stringify("PLACEHOLDER")}
+        channelId: {JSON.stringify("CHANNEL_PLACEHOLDER")}
+        schedulingType: automatic
+        mode: addToQueue
+        assets: [{{ video: {{ url: {JSON.stringify("URL_PLACEHOLDER")} }} }}]
+      }}) {{
+        ... on PostActionSuccess {{
+          post {{ id text dueAt status }}
+        }}
+        ... on MutationError {{
           message
-        }
-      }
-    }
+        }}
+      }}
+    }}
     """
-    variables = {
-        "input": {
-            "text": caption,
-            "channelId": channel_id,
-            "schedulingType": "automatic",
-            "mode": "addToQueue",
-            "assets": [{"video": {"url": video_url}}],
-        }
-    }
+    query = query.replace({JSON.stringify("PLACEHOLDER")}, json.dumps(caption, ensure_ascii=False))
+    query = query.replace({JSON.stringify("CHANNEL_PLACEHOLDER")}, json.dumps(channel_id))
+    query = query.replace({JSON.stringify("URL_PLACEHOLDER")}, json.dumps(video_url))
     response = requests.post(
         "https://api.buffer.com",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
