@@ -46,12 +46,12 @@ jobs:
         run: python -m py_compile poetry_demo.py
       - name: Generate poetry video demo
         env:
-          OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
-          PEXELS_API_KEY: \${{ secrets.PEXELS_API_KEY }}
-          POETRY_MOOD: \${{ inputs.mood }}
-          POETRY_LANGUAGE: \${{ inputs.language }}
-          POETRY_DURATION: \${{ inputs.duration }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          POETRY_MOOD: ${{ inputs.mood }}
+          POETRY_LANGUAGE: ${{ inputs.language }}
+          POETRY_DURATION: ${{ inputs.duration }}
         run: python poetry_demo.py
       - name: Upload demo artifact
         uses: actions/upload-artifact@v4
