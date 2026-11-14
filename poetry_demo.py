@@ -102,31 +102,83 @@ def get_pexels_video():
     print("Using portrait background footage from Pexels."); return path
 
 def generated_background():
-    img=Image.new("RGB",(W,H)); px=img.load()
+    """Create a fresh, original cinematic nature illustration for every run (no stock footage)."""
+    rng = random.Random()\n    rng_sun_x = rng.uniform(0.35, 0.68)
+    img = Image.new("RGB", (W, H))
+    px = img.load()
+    palettes = {
+        "sad": ((10, 19, 34), (80, 91, 112), (205, 142, 105)),
+        "rain": ((12, 25, 39), (66, 91, 111), (160, 183, 194)),
+        "romantic": ((48, 31, 55), (190, 105, 92), (255, 197, 132)),
+        "peaceful": ((12, 42, 54), (74, 139, 135), (235, 207, 151)),
+        "deep": ((5, 11, 29), (43, 57, 88), (194, 176, 151)),
+        "motivational": ((20, 42, 65), (111, 132, 126), (255, 202, 120)),
+        "memories": ((27, 25, 42), (119, 88, 93), (226, 173, 135)),
+    }
+    top, horizon, light = palettes.get(MOOD, palettes["peaceful"])
+    horizon_y = int(H * rng.uniform(0.43, 0.53))
     for y in range(H):
+        t = y / max(1, horizon_y)
+        if y <= horizon_y:
+            q = min(1.0, t)
+            col = tuple(int(top[k] * (1-q) + horizon[k] * q) for k in range(3))
+        else:
+            q = (y-horizon_y) / (H-horizon_y)
+            col = tuple(int(horizon[k] * (1-q) + max(0, horizon[k]*0.35) * q) for k in range(3))
         for x in range(W):
-            glow=max(0,1-(((x-500)/430)**2+((y-400)/520)**2))
-            px[x,y]=(int(5+18*glow),int(9+22*glow),int(19+40*glow))
-    glow=Image.new("RGBA",(W,H),(0,0,0,0)); gd=ImageDraw.Draw(glow)
-    if MOOD in ("sad","deep"):
-        gd.ellipse((400,220,660,500),fill=(255,190,90,50))
-        img=Image.alpha_composite(img.convert("RGBA"),glow.filter(ImageFilter.GaussianBlur(80)))
-        d=ImageDraw.Draw(img,"RGBA")
-        for i in range(230):
-            x=(i*71)%W; y=(i*137)%H
-            d.line((x,y,x-9,y+45),fill=(160,190,220,55),width=1)
-        d.line((520,320,520,850),fill=(255,210,145,110),width=5)
-        d.ellipse((475,275,565,365),fill=(255,220,160,100))
-    elif MOOD=="romantic":
-        d=ImageDraw.Draw(img,"RGBA"); d.ellipse((420,270,610,460),fill=(255,175,95,190))
-        d.rectangle((0,780,W,H),fill=(18,42,62,255))
-        for y in range(820,1120,36): d.line((300,y,650,y+10),fill=(255,190,130,45),width=3)
-    else:
-        d=ImageDraw.Draw(img,"RGBA")
-        for i in range(180):
-            x=(i*97)%W; y=(i*193)%H
-            d.ellipse((x,y,x+3,y+3),fill=(235,235,255,200))
-    path=WORK/"background.jpg"; img.convert("RGB").save(path,quality=92); return path
+            glow = max(0.0, 1.0 - (((x-W*rng_sun_x)/W)**2 + ((y-horizon_y*0.72)/(H*0.42))**2))
+            px[x,y] = tuple(min(255, int(col[k] + light[k]*0.18*glow)) for k in range(3))
+    d = ImageDraw.Draw(img, "RGBA")
+    sun_x = int(W*rng_sun_x); sun_y = int(horizon_y*rng.uniform(0.58,0.82))
+    radius = rng.randint(48,82)
+    for rr, alpha in ((radius+34,12),(radius+18,20),(radius,210)):
+        d.ellipse((sun_x-rr,sun_y-rr,sun_x+rr,sun_y+rr),fill=(*light,alpha))
+    # Layered mountain silhouettes with varied original contours.
+    for layer, base_y in enumerate((horizon_y+45,horizon_y+115,horizon_y+205)):
+        pts=[(0,H)]
+        x=0
+        while x<=W:
+            peak_x=x+rng.randint(35,115)
+            peak_y=base_y-rng.randint(80,250)//(layer+1)
+            pts.extend([(x,base_y),(min(W,peak_x),max(horizon_y-40,peak_y))])
+            x=peak_x
+        pts.extend([(W,H)])
+        shade=(17+layer*10,28+layer*12,43+layer*13,235-layer*22)
+        d.polygon(pts,fill=shade)
+    # Lake/river with a broken reflection under the light.
+    water_top=horizon_y+210
+    d.rectangle((0,water_top,W,H),fill=(12,27,39,95))
+    for i in range(95):
+        yy=rng.randint(water_top,H-8)
+        half=rng.randint(5,100)
+        xx=sun_x+rng.randint(-half*2,half*2)
+        d.line((xx-half,yy,xx+half,yy),fill=(*light,rng.randint(12,55)),width=rng.randint(1,4))
+    # Dark pine silhouettes frame the scene without covering the text area.
+    for side in (0,1):
+        for i in range(13):
+            x=rng.randint(0,150) if side==0 else rng.randint(W-150,W)
+            y=rng.randint(horizon_y+80,H-40)
+            height=rng.randint(90,260)
+            d.rectangle((x-3,y-height//5,x+3,y),fill=(5,13,19,190))
+            for k in range(4):
+                yy=y-height+k*height//5
+                width=(k+1)*rng.randint(12,22)
+                d.polygon([(x,yy-height//4),(x-width,yy+height//8),(x+width,yy+height//8)],fill=(5,20,25,190))
+    # Soft atmospheric haze and cinematic vignette.
+    haze=Image.new("RGBA",(W,H),(0,0,0,0))
+    hd=ImageDraw.Draw(haze)
+    hd.ellipse((W*0.12,horizon_y-100,W*0.9,horizon_y+350),fill=(*light,24))
+    img=Image.alpha_composite(img.convert("RGBA"),haze.filter(ImageFilter.GaussianBlur(75)))
+    vignette=Image.new("L",(W,H),0); vd=ImageDraw.Draw(vignette)
+    vd.ellipse((-W*0.22,-H*0.12,W*1.22,H*1.12),fill=210)
+    vignette=vignette.filter(ImageFilter.GaussianBlur(95))
+    dark=Image.new("RGBA",(W,H),(0,0,0,105))
+    dark.putalpha(Image.eval(vignette,lambda v: 105-int(v*0.35)))
+    img=Image.alpha_composite(img,dark)
+    path=WORK/"original_nature_art.jpg"
+    img.convert("RGB").save(path,quality=94)
+    print("Created a unique original cinematic nature image; no stock image used.")
+    return path
 
 def get_font(size):
     for p in ("/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf","/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
@@ -135,28 +187,52 @@ def get_font(size):
             except Exception: pass
     return ImageFont.load_default()
 
-def text_png(text,index):
-    layer=Image.new("RGBA",(W,H),(0,0,0,0)); d=ImageDraw.Draw(layer)
-    rtl=LANG.lower()=="urdu"; f=get_font(43 if rtl else 39)
-    words=text.split(); rows=[]; current=""
-    for word in words:
-        candidate=(current+" "+word).strip()
-        try: width=d.textlength(candidate,font=f,direction="rtl" if rtl else None)
-        except Exception: width=d.textlength(candidate,font=f)
-        if width>610 and current: rows.append(current); current=word
-        else: current=candidate
-    if current: rows.append(current)
-    rows=rows[:2]; y=560-len(rows)*31
-    for row in rows:
-        try:
-            kw={"direction":"rtl"} if rtl else {}
-            box=d.textbbox((0,0),row,font=f,stroke_width=2,**kw); x=(W-(box[2]-box[0]))//2
-            d.text((x+2,y+4),row,font=f,fill=(0,0,0,220),stroke_width=4,stroke_fill=(0,0,0,180),**kw)
-            d.text((x,y),row,font=f,fill=(255,250,240,255),stroke_width=1,stroke_fill=(20,20,25,210),**kw)
-        except Exception: d.text((50,y),row,font=f,fill=(255,250,240,255))
-        y+=65
-    p=WORK/f"line_{index}.png"; layer.save(p); return p
-
+def text_page_png(title, lines):
+    """Render the complete poem/quote on one elegant, readable page."""
+    layer=Image.new("RGBA",(W,H),(0,0,0,0))
+    panel=Image.new("RGBA",(W,H),(0,0,0,0))
+    pd=ImageDraw.Draw(panel)
+    pd.rounded_rectangle((42,285,W-42,1000),radius=34,fill=(4,10,18,174),outline=(245,220,185,115),width=2)
+    panel=panel.filter(ImageFilter.GaussianBlur(0.4))
+    layer=Image.alpha_composite(layer,panel)
+    d=ImageDraw.Draw(layer)
+    rtl=LANG.lower()=="urdu"
+    title_font=get_font(43 if rtl else 39)
+    body_font=get_font(35 if rtl else 32)
+    try:
+        kw={"direction":"rtl"} if rtl else {}
+        tb=d.textbbox((0,0),title,font=title_font,**kw)
+        tx=(W-(tb[2]-tb[0]))//2
+        d.text((tx,350),title,font=title_font,fill=(255,218,160,255),stroke_width=1,stroke_fill=(0,0,0,180),**kw)
+    except Exception:
+        d.text((65,350),title,font=title_font,fill=(255,218,160,255))
+    y=445
+    max_width=590
+    for line in lines[:8]:
+        # Keep each original poem line intact where possible; wrap only if required.
+        chunks=[]; current=""
+        for word in str(line).split():
+            candidate=(current+" "+word).strip()
+            try: width=d.textlength(candidate,font=body_font,direction="rtl" if rtl else None)
+            except Exception: width=d.textlength(candidate,font=body_font)
+            if width>max_width and current:
+                chunks.append(current); current=word
+            else: current=candidate
+        if current: chunks.append(current)
+        for chunk in chunks:
+            try:
+                kw={"direction":"rtl"} if rtl else {}
+                box=d.textbbox((0,0),chunk,font=body_font,**kw)
+                x=(W-(box[2]-box[0]))//2
+                d.text((x+2,y+3),chunk,font=body_font,fill=(0,0,0,220),stroke_width=2,stroke_fill=(0,0,0,170),**kw)
+                d.text((x,y),chunk,font=body_font,fill=(255,252,244,255),stroke_width=1,stroke_fill=(0,0,0,130),**kw)
+            except Exception:
+                d.text((65,y),chunk,font=body_font,fill=(255,252,244,255))
+            y+=62
+        y+=9
+    path=WORK/"complete_poem_page.png"
+    layer.save(path)
+    return path
 
 def make_mood_music(title, lines):
     """Create an original, royalty-free instrumental bed matched to the poem mood.
@@ -235,36 +311,26 @@ def make_mood_music(title, lines):
     return out
 
 def render_video(title,lines,bg,music):
-    inputs=[]
     if bg.suffix==".mp4":
-        inputs+=["-stream_loop","-1","-i",str(bg)]
-        base="[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
-    else:
-        inputs+=["-loop","1","-i",str(bg)]
-        base="[0:v]scale=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
-    segment=DURATION/len(lines); overlays=[]
-    for i,line in enumerate(lines):
-        p=text_png(line,i); inputs+=["-loop","1","-i",str(p)]
-        overlays.append((i+1,i*segment,(i+1)*segment))
-    cmd=["ffmpeg","-y",*inputs,"-i",str(music)]
-    filters=[base]; previous="bg"
-    for n,start,end in overlays:
-        label=f"v{n}"
-        filters.append(f"[{n}:v]format=rgba,fade=t=in:st={start:.3f}:d=0.65:alpha=1[t{n}]")
-        filters.append(f"[{previous}][t{n}]overlay=(W-w)/2:(H-h)/2:enable='between(t,{start:.3f},{end:.3f})'[{label}]")
-        previous=label
-    audio_index=len(lines)+1
-    filters.append(f"[{audio_index}:a]volume=1.10,alimiter=limit=0.95,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0,DURATION-3)}:d=3[aout]")
-    cmd+=["-filter_complex",";".join(filters),"-map",f"[{previous}]","-map","[aout]","-t",str(DURATION),
-      "-r",str(FPS),"-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-c:a","aac","-b:a","128k",
-      "-movflags","+faststart",str(OUT)]
+        raise RuntimeError("Stock footage is disabled; this workflow uses original generated artwork only.")
+    page=text_page_png(title,lines)
+    inputs=["-loop","1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
+    base="[0:v]scale=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
+    filters=[base,
+      "[1:v]format=rgba,fade=t=in:st=0.20:d=0.55:alpha=1[poem]",
+      "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,0.15,"+str(DURATION)+")'[vout]",
+      "[2:a]volume=1.10,alimiter=limit=0.95,afade=t=in:st=0:d=0.18,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
+    cmd=["ffmpeg","-y",*inputs,"-filter_complex",";".join(filters),
+      "-map","[vout]","-map","[aout]","-t",str(DURATION),"-r",str(FPS),
+      "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p",
+      "-c:a","aac","-b:a","160k","-movflags","+faststart",str(OUT)]
     run(cmd)
     Path("poetry_demo.txt").write_text(f"Title: {title}\nMood: {MOOD}\nLanguage: {LANG}\nDuration: {DURATION}s\n\n"+
-      "\n".join(lines)+"\n\nDemo only: no Buffer or Facebook publishing.\n",encoding="utf-8")
+      "\n".join(lines)+"\n\nOriginal generated background artwork. Full poem displayed on one page. No voice-over.\n",encoding="utf-8")
 
 def main():
     print(f"Generating {MOOD} / {LANG} / {DURATION}s poetry demo.")
-    title,lines=make_poem(); bg=get_pexels_video() or generated_background()
+    title,lines=make_poem(); bg=generated_background()
     music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
