@@ -306,28 +306,76 @@ def get_font(size):
     return ImageFont.load_default()
 
 def text_page_png(title, lines):
-    """Place 2–3 short poetry lines directly over the background, without a box."""
+    """Fit short poetry neatly inside the safe area, like the supplied reference reel."""
     layer=Image.new("RGBA",(W,H),(0,0,0,0))
     d=ImageDraw.Draw(layer)
     rtl=LANG.lower()=="urdu"
-    font=get_font(76 if rtl else 70)
+    max_width=int(W*0.84)
     visible=[str(line).strip() for line in lines[:3] if str(line).strip()]
-    gap=42
-    heights=[]
-    for line in visible:
-        try: box=d.textbbox((0,0),line,font=font,direction="rtl" if rtl else None)
-        except Exception: box=d.textbbox((0,0),line,font=font)
-        heights.append(max(80,box[3]-box[1]))
-    y=int(H*0.54-(sum(heights)+gap*max(0,len(heights)-1))/2)
-    for line,height in zip(visible,heights):
-        kw={"direction":"rtl"} if rtl else {}
+
+    def measure(text,font):
         try:
-            box=d.textbbox((0,0),line,font=font,**kw)
-            x=(W-(box[2]-box[0]))//2
-            d.text((x+4,y+5),line,font=font,fill=(0,0,0,210),stroke_width=8,stroke_fill=(0,0,0,150),**kw)
-            d.text((x,y),line,font=font,fill=(255,250,239,255),stroke_width=2,stroke_fill=(35,22,24,235),**kw)
+            return d.textbbox((0,0),text,font=font,direction="rtl" if rtl else None)
         except Exception:
-            d.text((75,y),line,font=font,fill=(255,250,239,255),stroke_width=3,stroke_fill=(0,0,0,220))
+            return d.textbbox((0,0),text,font=font)
+
+    def width(text,font):
+        b=measure(text,font)
+        return b[2]-b[0]
+
+    # Wrap long AI lines at word boundaries; never allow text beyond the frame.
+    wrapped=[]
+    for raw in visible:
+        words=raw.split()
+        current=""
+        for word in words:
+            candidate=(current+" "+word).strip()
+            test_font=get_font(60 if rtl else 54)
+            if current and width(candidate,test_font)>max_width:
+                wrapped.append(current)
+                current=word
+            else:
+                current=candidate
+        if current:
+            wrapped.append(current)
+    visible=wrapped[:3] or [""]
+
+    # Find the largest font that fits every line and the full upper safe area.
+    chosen=None
+    for size in range(62 if rtl else 56, 35, -2):
+        font=get_font(size)
+        boxes=[measure(line,font) for line in visible]
+        heights=[max(1,b[3]-b[1]) for b in boxes]
+        gap=max(18,int(size*0.34))
+        total_h=sum(heights)+gap*max(0,len(heights)-1)
+        if max((b[2]-b[0] for b in boxes),default=0)<=max_width and total_h<=int(H*0.25):
+            chosen=(font,boxes,heights,gap,total_h)
+            break
+    if chosen is None:
+        font=get_font(36)
+        boxes=[measure(line,font) for line in visible]
+        heights=[max(1,b[3]-b[1]) for b in boxes]
+        gap=12
+        total_h=sum(heights)+gap*max(0,len(heights)-1)
+    else:
+        font,boxes,heights,gap,total_h=chosen
+
+    # Keep text in the upper third, safely away from every frame edge.
+    y=max(int(H*0.25),int(H*0.34-total_h/2))
+    y=min(y,int(H*0.43-total_h))
+    for line,b,height in zip(visible,boxes,heights):
+        text_w=b[2]-b[0]
+        x=max(36,(W-text_w)//2)
+        x=min(x,W-36-text_w)
+        kw={"direction":"rtl"} if rtl else {}
+        # Soft shadow for contrast, without a text box or panel.
+        try:
+            d.text((x+2,y+3),line,font=font,fill=(0,0,0,175),
+                   stroke_width=3,stroke_fill=(0,0,0,135),**kw)
+            d.text((x,y),line,font=font,fill=(255,255,250,255),
+                   stroke_width=1,stroke_fill=(25,22,25,190),**kw)
+        except Exception:
+            d.text((x,y),line,font=font,fill=(255,255,250,255))
         y+=height+gap
     path=WORK/"poetry_overlay.png"
     layer.save(path)
@@ -400,88 +448,87 @@ def get_online_music():
     return None
 
 def make_mood_music(title, lines):
-    """Create an original, royalty-free instrumental bed matched to the poem mood.
-    No voice, speech, or text-to-speech is used."""
+    """Compose a fresh, gentle piano-and-strings instrumental using a SoundFont."""
+    try:
+        import pretty_midi
+    except ImportError as exc:
+        raise RuntimeError("pretty_midi is required for the piano-and-strings soundtrack.") from exc
+
     profiles = {
-        "sad":          {"bpm": 66, "progression": [[0,3,7],[8,0,3],[5,8,0],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.45},
-        "romantic":     {"bpm": 78, "progression": [[0,4,7],[9,0,4],[5,9,0],[7,11,2]], "scale":[0,2,4,5,7,9,11], "brightness":0.68},
-        "peaceful":     {"bpm": 72, "progression": [[0,4,7],[5,9,0],[2,5,9],[7,11,2]], "scale":[0,2,4,5,7,9,11], "brightness":0.58},
-        "deep":         {"bpm": 62, "progression": [[0,3,7],[6,10,1],[8,0,3],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.40},
-        "motivational": {"bpm": 96, "progression": [[0,4,7],[7,11,2],[9,0,4],[5,9,0]], "scale":[0,2,4,5,7,9,11], "brightness":0.82},
-        "rain":         {"bpm": 68, "progression": [[0,3,7],[8,0,3],[5,8,0],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.48},
-        "memories":     {"bpm": 70, "progression": [[0,3,7],[5,8,0],[8,0,3],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.46},
+      "sad":          {"bpm":66,"root":57,"chords":[[0,3,7],[8,0,3],[5,8,0],[3,7,10]],"lead":[0,2,3,5,7,8,10]},
+      "romantic":     {"bpm":76,"root":57,"chords":[[0,4,7],[9,0,4],[5,9,0],[7,11,2]],"lead":[0,2,4,5,7,9,11]},
+      "peaceful":     {"bpm":70,"root":55,"chords":[[0,4,7],[5,9,0],[2,5,9],[7,11,2]],"lead":[0,2,4,5,7,9,11]},
+      "deep":         {"bpm":62,"root":55,"chords":[[0,3,7],[6,10,1],[8,0,3],[3,7,10]],"lead":[0,2,3,5,7,8,10]},
+      "motivational": {"bpm":88,"root":55,"chords":[[0,4,7],[7,11,2],[9,0,4],[5,9,0]],"lead":[0,2,4,5,7,9,11]},
+      "rain":         {"bpm":66,"root":55,"chords":[[0,3,7],[8,0,3],[5,8,0],[3,7,10]],"lead":[0,2,3,5,7,8,10]},
+      "memories":     {"bpm":68,"root":57,"chords":[[0,3,7],[5,8,0],[8,0,3],[3,7,10]],"lead":[0,2,3,5,7,8,10]},
     }
-    mood = MOOD if MOOD in profiles else "peaceful"
-    p = profiles[mood]
-    # New arrangement every run: vary tempo, key, chord order and melodic phrasing.
-    rng = random.Random()
-    sample_rate = 22050
-    total = int(DURATION * sample_rate)
-    bpm = max(56, min(112, p["bpm"] + rng.randint(-7, 7)))
-    beat = 60.0 / bpm
-    bar = beat * 4
-    root = (48 if mood in ("sad","deep","rain","memories") else 50) + rng.choice([-2,0,2,3])
-    progression = list(p["progression"])
-    shift = rng.randrange(len(progression))
-    progression = progression[shift:] + progression[:shift]
-    if rng.random() < 0.5:
-        progression = list(reversed(progression))
-    melody_style = rng.choice(["soft_piano","bell_piano","warm_keys"])
-    scale = p["scale"]
-    melody = []
-    for bar_i in range(int(math.ceil(DURATION / bar)) + 1):
-        base = root + rng.choice((0, 0, 12))
-        degree = rng.choice(scale)
-        melody.append((bar_i * bar + rng.uniform(0.05, 0.35), base + degree + 12))
-        if rng.random() < 0.55:
-            melody.append((bar_i * bar + beat * rng.choice((1, 2, 3)), base + rng.choice(scale) + 12))
-    melody.sort()
-    out = WORK / "mood_matched_instrumental.wav"
-    with wave.open(str(out), "wb") as wav:
-        wav.setnchannels(2)
-        wav.setsampwidth(2)
-        wav.setframerate(sample_rate)
-        chunk = bytearray()
-        for n in range(total):
-            t = n / sample_rate
-            bar_i = int(t / bar)
-            chord = progression[bar_i % len(progression)]
-            chord_notes = [root + x for x in chord]
-            # Warm, slowly swelling chord pad.
-            pad = 0.0
-            for j, midi in enumerate(chord_notes):
-                freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
-                pad += math.sin(2 * math.pi * freq * t + j * 0.17) * (0.105 if j == 0 else 0.078)
-                pad += math.sin(2 * math.pi * (freq * 2.003) * t + j) * 0.018
-                pad += math.sin(2 * math.pi * (freq * 3.01) * t + j * 0.4) * 0.007
-            # Gentle piano-like plucks, with notes chosen from the mood's scale.
-            pluck = 0.0
-            for onset, midi in melody:
-                age = t - onset
-                if 0 <= age < 1.8:
-                    freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
-                    env = math.exp(-age * (2.8 if mood == "motivational" else 2.0))
-                    overtone = 0.38 if melody_style == "bell_piano" else (0.16 if melody_style == "warm_keys" else 0.24)
-                    pluck += (math.sin(2*math.pi*freq*age) + overtone*math.sin(2*math.pi*freq*2.01*age)) * (0.19 if melody_style == "warm_keys" else 0.22) * env
-            # A very soft pulse gives uplifting moods movement without overpowering the poem.
-            pulse = 0.0
-            if mood == "motivational":
-                pulse = math.sin(2*math.pi*82*t) * (0.025 * max(0.0, 1.0 - (t % beat)/0.16))
-            sample = max(-0.85, min(0.85, pad + pluck + pulse))
-            fade_in = min(1.0, t / 0.16)
-            fade_out = min(1.0, max(0.0, (DURATION - t) / 2.2))
-            sample *= fade_in * fade_out * 1.65
-            # Slight stereo width; both channels remain fully instrumental.
-            left = int(max(-1.0, min(1.0, sample * 0.96)) * 32767)
-            right = int(max(-1.0, min(1.0, sample * 1.04)) * 32767)
-            chunk.extend(struct.pack("<hh", left, right))
-            if len(chunk) >= 65536:
-                wav.writeframesraw(chunk)
-                chunk.clear()
-        if chunk:
-            wav.writeframesraw(chunk)
-    print(f"Created original {mood} mood-matched instrumental (no vocals).")
-    return out
+    mood=MOOD if MOOD in profiles else "peaceful"
+    p=profiles[mood]
+    rng=random.Random()
+    bpm=p["bpm"]+rng.randint(-3,3)
+    beat=60.0/bpm
+    bar=beat*4
+    midi=pretty_midi.PrettyMIDI(initial_tempo=bpm)
+    piano=pretty_midi.Instrument(program=0,name="Soft Grand Piano")
+    strings=pretty_midi.Instrument(program=48,name="Warm Strings")
+    pad=pretty_midi.Instrument(program=89,name="Warm Atmosphere")
+    bell=pretty_midi.Instrument(program=10,name="Soft Music Box")
+    progression=list(p["chords"])
+    shift=rng.randrange(len(progression))
+    progression=progression[shift:]+progression[:shift]
+    if rng.random()<0.35: progression=list(reversed(progression))
+    bars=int(math.ceil(DURATION/bar))+1
+    for bi in range(bars):
+        start=bi*bar
+        chord=progression[bi%len(progression)]
+        # Long, quiet string harmony underneath the piano.
+        for j,interval in enumerate(chord):
+            note=p["root"]+interval
+            strings.notes.append(pretty_midi.Note(
+              velocity=42 if j==0 else 34,pitch=note+12,
+              start=start,end=min(DURATION,start+bar*1.08)))
+            pad.notes.append(pretty_midi.Note(
+              velocity=22,pitch=note+24,
+              start=start,end=min(DURATION,start+bar*1.2)))
+        # Broken-chord piano notes with natural pauses, rather than repetitive beeps.
+        arp=[p["root"]+chord[0]+12,p["root"]+chord[1]+12,
+             p["root"]+chord[2]+12,p["root"]+chord[1]+24]
+        order=[0,1,2,3] if mood in ("motivational","romantic") else [0,2,1,3]
+        for k,idx in enumerate(order):
+            onset=start+k*beat*0.82+rng.uniform(0,0.035)
+            if onset>=DURATION: continue
+            pitch=arp[idx]+rng.choice([0,0,0,12])
+            dur=beat*rng.uniform(0.55,0.82)
+            piano.notes.append(pretty_midi.Note(
+              velocity=rng.randint(45,61),pitch=pitch,
+              start=onset,end=min(DURATION,onset+dur)))
+        # Sparse, lyrical top melody; keep plenty of breathing room.
+        if bi%2==0 or mood=="motivational":
+            scale=p["lead"]
+            degree=rng.choice(scale)
+            pitch=p["root"]+24+degree
+            onset=start+beat*rng.choice([0.0,1.0,2.0])
+            dur=beat*rng.uniform(1.0,1.8)
+            if onset<DURATION:
+                piano.notes.append(pretty_midi.Note(
+                  velocity=rng.randint(34,49),pitch=pitch,
+                  start=onset,end=min(DURATION,onset+dur)))
+            if mood in ("romantic","peaceful","memories") and rng.random()<0.45 and onset+beat<DURATION:
+                bell.notes.append(pretty_midi.Note(
+                  velocity=27,pitch=pitch+12,start=onset+beat,
+                  end=min(DURATION,onset+beat+beat*0.7)))
+    midi.instruments.extend([strings,pad,piano,bell])
+    midi_path=WORK/"cinematic_original.mid"
+    wav_path=WORK/"cinematic_original.wav"
+    midi.write(str(midi_path))
+    soundfont="/usr/share/sounds/sf2/TimGM6mb.sf2"
+    if not Path(soundfont).exists():
+        raise RuntimeError("The General MIDI SoundFont was not installed by the workflow.")
+    run(["fluidsynth","-ni",soundfont,str(midi_path),"-F",str(wav_path),"-r","22050"])
+    print(f"Composed a fresh {mood} piano-and-strings soundtrack at {bpm} BPM.")
+    return wav_path
+
 
 def render_video(title,lines,bg,music):
     page=text_page_png(title,lines)
@@ -517,9 +564,7 @@ def main():
         bg=get_online_image()
     if bg is None:
         raise RuntimeError("No reusable internet image was found. Add PEXELS_API_KEY or retry later; no AI image will be generated.")
-    music=get_online_music()
-    if music is None:
-        music=make_mood_music(title,lines)
+    music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
