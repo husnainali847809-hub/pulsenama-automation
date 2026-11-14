@@ -18,11 +18,11 @@ jobs:
       - name: Install FFmpeg and fonts
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-noto-core fonts-dejavu-core
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg fluidsynth timgm6mb-soundfont fonts-noto-core fonts-dejavu-core
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests Pillow
+          pip install requests Pillow pretty_midi
       - name: Validate script
         run: python -m py_compile poetry_demo.py
       - name: Generate poetry video
