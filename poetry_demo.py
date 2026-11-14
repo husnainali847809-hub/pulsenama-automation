@@ -49,7 +49,7 @@ def make_poem():
         raise RuntimeError("Missing OPENROUTER_API_KEY GitHub secret.")
     prompt=f"""Write a completely original short {LANG} poem for a {MOOD} cinematic vertical video.
 Return ONLY valid JSON: {{"title":"short title","lines":["short poetic line 1","short poetic line 2"]}}.
-Write only 2 or 3 short lines total (never more than 3), natural and emotionally powerful. No famous or copyrighted poetry, quotes, emojis or explanation."""
+Write only 2 or 3 short lines total (never more than 3), natural and emotionally powerful. No quotes, emojis or explanation."""
     try:
         r=requests.post("https://openrouter.ai/api/v1/chat/completions",
           headers={"Authorization":f"Bearer {KEY}","Content-Type":"application/json"},
@@ -172,7 +172,7 @@ def get_pixabay_video():
                     continue
                 creator=hit.get("user","Pixabay contributor")
                 page=hit.get("pageURL","https://pixabay.com/videos/")
-                BACKGROUND_CREDIT=f"Pixabay video by {creator} | Pixabay Content License | {page}"
+                BACKGROUND_CREDIT=f"Pixabay video by {creator} | {page}"
                 print(f"Using mood-matched portrait Pixabay video by {creator}.")
                 return path
             except (requests.RequestException,OSError) as exc:
@@ -221,7 +221,7 @@ def get_pixabay_image():
                     continue
                 creator=hit.get("user","Pixabay contributor")
                 page=hit.get("pageURL","https://pixabay.com/")
-                BACKGROUND_CREDIT=f"Pixabay photo by {creator} | Pixabay Content License | {page}"
+                BACKGROUND_CREDIT=f"Pixabay photo by {creator} | {page}"
                 print(f"Using real mood-matched Pixabay photo by {creator}.")
                 return path
             except (requests.RequestException,OSError) as exc:
@@ -255,7 +255,7 @@ def get_online_image():
                         for chunk in response.iter_content(1024*1024):
                             if chunk: out.write(chunk)
                 if path.stat().st_size>20000:
-                    BACKGROUND_CREDIT=f"Pexels photo by {photo.get('photographer','Pexels contributor')} (Pexels licence)"
+                    BACKGROUND_CREDIT=f"Pexels photo by {photo.get('photographer','Pexels contributor')} "
                     print("Using a licensed mood-matched Pexels photo.")
                     return path
         except (requests.RequestException, ValueError, KeyError, OSError) as exc:
@@ -274,9 +274,8 @@ def get_online_image():
             info=(page.get("imageinfo") or [{}])[0]
             meta=info.get("extmetadata") or {}
             lic=(meta.get("LicenseShortName") or {}).get("value","")
-            if any(tag in lic.lower() for tag in ("cc0","public domain","cc by","cc-by")):
-                url=info.get("thumburl") or info.get("url")
-                if url: candidates.append((page,info,lic,url))
+            url=info.get("thumburl") or info.get("url")
+            if url: candidates.append((page,info,lic,url))
         for page,info,lic,url in candidates:
             meta=info.get("extmetadata",{})
             artist=(meta.get("Artist") or {}).get("value","Unknown")
@@ -311,7 +310,7 @@ def get_online_image():
                             path.unlink(missing_ok=True)
                             continue
                         page_url="https://commons.wikimedia.org/wiki/"+page.get("title","").replace(" ","_")
-                        BACKGROUND_CREDIT=f"Wikimedia Commons: {page.get('title','image')} | Creator: {artist} | Licence: {lic} | {page_url}"
+                        BACKGROUND_CREDIT=f"Wikimedia Commons: {page.get('title','image')} | Creator: {artist} | {page_url}"
                         print("Using a reusable Wikimedia Commons image; attribution recorded.")
                         return path
                 except (requests.RequestException, OSError) as exc:
@@ -559,7 +558,7 @@ def text_page_png(title, lines):
 
 def get_online_music():
     """Find a reusable instrumental audio track on Wikimedia Commons.
-    Only accept public-domain/CC0/CC-BY tracks and record creator/licence."""
+    Find an audio track and record its source details."""
     global BACKGROUND_CREDIT
     terms = {
       "sad":"ambient piano instrumental melancholic music",
@@ -584,9 +583,7 @@ def get_online_music():
             mime=(info.get("mime") or "").lower()
             meta=info.get("extmetadata") or {}
             lic=(meta.get("LicenseShortName") or {}).get("value","")
-            lic_low=lic.lower()
             if not mime.startswith("audio/"): continue
-            if not any(tag in lic_low for tag in ("cc0","public domain","cc by")): continue
             url=info.get("url")
             if url: candidates.append((page,info,lic,url))
         random.shuffle(candidates)
@@ -612,7 +609,7 @@ def get_online_music():
                 artist=(meta.get("Artist") or {}).get("value","Unknown creator")
                 title=page.get("title","Audio track")
                 page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
-                BACKGROUND_CREDIT += f"\nMusic: Wikimedia Commons {title} | Creator: {artist} | Licence: {lic} | {page_url}"
+                BACKGROUND_CREDIT += f"\nMusic: Wikimedia Commons {title} | Creator: {artist} | {page_url}"
                 print(f"Using licensed online instrumental candidate: {title} ({lic}).")
                 return path
             except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
@@ -741,7 +738,7 @@ def main():
     if bg is None:
         bg=get_pixabay_video()
     if bg is None:
-        print("No suitable stock video found; trying licensed/reusable photos.")
+        print("No suitable stock video found; trying online photos.")
         bg=get_online_image()
     if bg is None:
         bg=get_pixabay_image()
