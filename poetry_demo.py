@@ -38,7 +38,7 @@ def fallback_poem():
       }
     }
     lang = LANG if LANG in poems else "English"
-    mood = MOOD if MOOD in poems[lang] else "sad"
+    mood = MOOD if MOOD in poems[lang] else ("peaceful" if MOOD in ("romantic","peaceful") else ("deep" if MOOD in ("motivational","deep") else "sad"))
     title, lines = poems[lang][mood]
     print("Using built-in original poem fallback; AI response was unavailable or invalid.")
     return title, lines
