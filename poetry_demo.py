@@ -281,7 +281,7 @@ def get_online_image():
             filename=page.get("title","").replace("File:","",1)
             # Commons thumbnail URLs can occasionally return 403. Try the original
             # URL and Commons' own FilePath redirect independently, then continue
-            # to the next licensed candidate instead of aborting the entire search.
+            # to the next candidate instead of aborting the entire search.
             urls=[url]
             if info.get("url") and info.get("url") not in urls:
                 urls.append(info["url"])
@@ -376,7 +376,7 @@ def get_unsplash_image():
                     profile = user.get("links", {}).get("html", "https://unsplash.com/")
                     page_url = photo.get("links", {}).get("html", "https://unsplash.com/")
                     BACKGROUND_CREDIT = (
-                      f"Unsplash photo by {creator} | Unsplash licence | "
+                      f"Unsplash photo by {creator} | "
                       f"Photo: {page_url} | Creator: {profile}"
                     )
                     print(f"Using a real mood-matched Unsplash photograph: {creator}.")
