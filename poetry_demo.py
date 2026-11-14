@@ -574,65 +574,73 @@ def text_page_png(title, lines):
 
 
 def get_online_music():
-    """Find a mood-matched song with actual singing/vocals; never choose an instrumental."""
+    """Download a mood-matched vocal song from Jamendo, favoring popular tracks."""
     global BACKGROUND_CREDIT
-    terms = {
-      "sad": "sad emotional vocal song singing",
-      "romantic": "romantic love song vocals singer",
-      "motivational": "uplifting inspirational song vocals singer",
-      "deep": "soulful deep vocal song singing",
-      "peaceful": "soft acoustic song vocals singer",
-      "rain": "melancholic vocal song singing",
-      "memories": "nostalgic song vocals singer",
-    }.get(MOOD, "emotional vocal song singer")
+    client_id=os.getenv("JAMENDO_CLIENT_ID","").strip()
+    if not client_id:
+        print("Missing JAMENDO_CLIENT_ID; add it as a GitHub Actions secret.")
+        return None
+    mood_tags={
+      "sad":"sad emotional",
+      "romantic":"romance pop",
+      "motivational":"energetic rock",
+      "deep":"emotional soul",
+      "peaceful":"chillout acoustic",
+      "rain":"sad chillout",
+      "memories":"nostalgic emotional",
+    }.get(MOOD,"emotional pop")
+    params={
+      "client_id":client_id,"format":"json","limit":50,
+      "fuzzytags":mood_tags.replace(" ","+"),
+      "vocalinstrumental":"vocal",
+      "durationbetween":f"35_{max(240,DURATION+30)}",
+      "audioformat":"mp32","audiodlformat":"mp32",
+      "boost":"popularity_week","include":"musicinfo",
+      "groupby":"artist_id",
+    }
     try:
-        params={"action":"query","format":"json","generator":"search",
-          "gsrsearch":terms,"gsrnamespace":6,"gsrlimit":40,
-          "prop":"imageinfo","iiprop":"url|mime|extmetadata"}
-        r=requests.get("https://commons.wikimedia.org/w/api.php",params=params,
-          headers={"User-Agent":"PulsenamaPoetryVideo/1.0"},timeout=30)
+        r=requests.get("https://api.jamendo.com/v3.0/tracks/",params=params,timeout=35)
         r.raise_for_status()
-        pages=list(((r.json().get("query") or {}).get("pages") or {}).values())
-        candidates=[]
-        for page in pages:
-            info=(page.get("imageinfo") or [{}])[0]
-            mime=(info.get("mime") or "").lower()
-            url=info.get("url")
-            if mime.startswith("audio/") and url:
-                candidates.append((page,info,url))
-        random.shuffle(candidates)
-        for page,info,url in candidates:
+        payload=r.json()
+        if (payload.get("headers") or {}).get("status")!="success":
+            raise RuntimeError((payload.get("headers") or {}).get("error_message","Jamendo API error"))
+        tracks=payload.get("results") or []
+        random.shuffle(tracks)
+        # Prefer popular vocal tracks; skip entries that do not allow downloads.
+        tracks.sort(key=lambda t:int(t.get("duration") or 0),reverse=True)
+        candidates=[t for t in tracks if t.get("audiodownload_allowed") and t.get("audiodownload")]
+        if not candidates:
+            candidates=[t for t in tracks if t.get("audio")]
+        for track in candidates:
+            url=track.get("audiodownload") or track.get("audio")
+            if not url: continue
             try:
-                ext=Path(url.split("?")[0]).suffix.lower()
-                if ext not in (".ogg",".oga",".mp3",".wav",".flac",".m4a"):
-                    continue
-                path=WORK/("vocal_song"+ext)
-                with requests.get(url,stream=True,timeout=90,
-                  headers={"User-Agent":"PulsenamaPoetryVideo/1.0","Referer":"https://commons.wikimedia.org/"}) as response:
+                path=WORK/"jamendo_vocal_song.mp3"
+                with requests.get(url,stream=True,timeout=90) as response:
                     response.raise_for_status()
                     with path.open("wb") as out:
                         for chunk in response.iter_content(256*1024):
                             if chunk: out.write(chunk)
-                if path.stat().st_size < 50000:
+                if path.stat().st_size<50000:
                     path.unlink(missing_ok=True)
                     continue
                 probe=subprocess.run(["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
                   stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-                if probe.returncode != 0:
+                if probe.returncode!=0:
                     path.unlink(missing_ok=True)
                     continue
-                title=page.get("title","Vocal song")
-                meta=info.get("extmetadata") or {}
-                artist=(meta.get("Artist") or {}).get("value","Unknown singer")
-                page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
-                BACKGROUND_CREDIT += f"\nSong: {title} | Singer/creator: {artist} | {page_url}"
-                print(f"Using a mood-matched song with vocals: {title}.")
+                title=track.get("name","Jamendo song")
+                artist=track.get("artist_name","Jamendo artist")
+                page=f"https://www.jamendo.com/track/{track.get('id','')}"
+                BACKGROUND_CREDIT += f"\\nSong: {title} — {artist} | Jamendo: {page}"
+                print(f"Using a popular mood-matched vocal song from Jamendo: {title} — {artist}.")
                 return path
             except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
-                print(f"Song candidate unavailable; trying another: {exc}")
-                continue
-    except (requests.RequestException,ValueError,KeyError,OSError) as exc:
-        print(f"Online vocal-song search failed: {exc}")
+                print(f"Jamendo song candidate failed; trying another: {exc}")
+                path.unlink(missing_ok=True)
+        print("Jamendo returned no downloadable vocal tracks for this mood.")
+    except (requests.RequestException,ValueError,KeyError,RuntimeError) as exc:
+        print(f"Jamendo vocal-song search failed: {exc}")
     return None
 
 def make_mood_music(title, lines):
@@ -743,7 +751,7 @@ def render_video(title,lines,bg,music):
       "-c:a","aac","-b:a","160k","-movflags","+faststart",str(OUT)]
     run(cmd)
     Path("poetry_demo.txt").write_text(f"Title: {title}\nMood: {MOOD}\nLanguage: {LANG}\nDuration: {DURATION}s\n\n"+
-      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nShort 2–3 line poetry displayed directly on background; no text box or watermark. Original instrumental music.\n",encoding="utf-8")
+      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nShort 2–3 line poetry displayed directly on background; no text box or watermark. Mood-matched vocal song from Jamendo.\n",encoding="utf-8")
 
 def main():
     print(f"Auto-selected: {MOOD} mood / {LANG} / {DURATION}s.")
@@ -765,7 +773,7 @@ def main():
         raise RuntimeError("No usable internet photo/video could be downloaded from Pexels, Pixabay, Wikimedia Commons, or Unsplash. Check API keys/network access and retry; no AI image will be generated.")
     music=get_online_music()
     if music is None:
-        raise RuntimeError("No suitable song with vocals was found online for this mood. Retry the workflow; instrumental-only music is intentionally disabled.")
+        raise RuntimeError("No downloadable vocal song was found. Add a valid JAMENDO_CLIENT_ID GitHub Actions secret and retry; instrumental-only music is disabled.")
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
