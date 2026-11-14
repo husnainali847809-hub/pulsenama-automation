@@ -481,6 +481,8 @@ def make_mood_music(title, lines):
     bars=int(math.ceil(DURATION/bar))+1
     for bi in range(bars):
         start=bi*bar
+        if start>=DURATION:
+            continue
         chord=progression[bi%len(progression)]
         # Long, quiet string harmony underneath the piano.
         for j,interval in enumerate(chord):
