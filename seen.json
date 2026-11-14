@@ -2079,6 +2079,175 @@
       "created": "2026-11-14T03:31:13+00:00",
       "updated": "2026-11-14T03:31:14+00:00",
       "story_due_at": "2026-11-14T03:46:13.008Z"
+    },
+    "0e6d956f4567629432b0b9f8f56958e054adcd2de4f3e1da311ad3e394bdb92b": {
+      "title": "U19 Asia Cup: Pakistan opt to bat first as India miss Ishan Sood for final",
+      "bucket": "pakistan",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:33:08+00:00",
+      "updated": "2026-11-14T06:33:08+00:00",
+      "retry_after": "2026-11-14T12:33:08+00:00"
+    },
+    "c44cc04d1832d2aa85e6345183fc2f9ec9e900fe4c5291e3840835fa488ec572": {
+      "title": "Eating spicy wings and guessing games: When selling the movie becomes the show",
+      "bucket": "entertainment",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:33:10+00:00",
+      "updated": "2026-11-14T06:33:10+00:00"
+    },
+    "46ab45cf64de509706cf8a37b6ba31ca6c8be94ec03bfd9bf33c3b2ce3914f7a": {
+      "title": "A bitter African feud, a leadership battle and Macron's diplomatic tightrope in Cambodia",
+      "bucket": "world",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:33:18+00:00",
+      "updated": "2026-11-14T06:33:18+00:00"
+    },
+    "60bb4c52c45c270d41ee3cd395ba4046e12e587c85a3bf9cc0c40c3378e00144": {
+      "title": "Economic Key Facts Germany",
+      "bucket": "business",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:33:19+00:00",
+      "updated": "2026-11-14T06:33:19+00:00"
+    },
+    "2343e50a47391ac153836dc9944f15b1bce72bd5329da6a1e6c016a72a885fcd": {
+      "title": "DU Cancels PhD Registration of Scholar Accused of Assaulting Professor, Bans Entry for 3 Years",
+      "bucket": "education",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:34:26+00:00",
+      "updated": "2026-11-14T06:34:26+00:00",
+      "retry_after": "2026-11-14T12:34:26+00:00"
+    },
+    "383f28df42195844aed9bc7eb7f4414331da08bf4658c84a96ba45abdc1594c3": {
+      "title": "FAU's Michael Twardowski, Ph.D., Named Edwin A. Link Endowed Professor",
+      "bucket": "science",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:34:56+00:00",
+      "updated": "2026-11-14T06:34:56+00:00"
+    },
+    "c2241494b5a900727f766df58ae2553b86b0892467bcfe455746e757da727762": {
+      "title": "Goalkeeper Owono suspended for 12 matches after De Miguel death",
+      "bucket": "cricket",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:35:18+00:00",
+      "updated": "2026-11-14T06:35:18+00:00",
+      "retry_after": "2026-11-14T12:35:18+00:00"
+    },
+    "f8cfc01046bf2fb4d84b68019f49795bbe1ed16fb2837a0ee2c1fe70546eaea9": {
+      "title": "Video. Latest news bulletin | November 14th, 2026 – Morning",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:35:24+00:00",
+      "updated": "2026-11-14T06:35:24+00:00"
+    },
+    "a7c7108a09e435add503910d119618124ac06e1a8fa90fbb9c8e62bfc75b6a38": {
+      "title": "HELIX study identifies links between early exposures and adolescent health — News-Medical",
+      "bucket": "health",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:35:26+00:00",
+      "updated": "2026-11-14T06:35:26+00:00"
+    },
+    "aef1178f964ccebd07332c45eca2b5d412f902b7f745783204861832afab5e4a": {
+      "title": "Rudi Garcia interview: Thinking Balogun decision was ‘a joke’, managing Ronaldo and Man Utd interviews",
+      "bucket": "sports",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:36:02+00:00",
+      "updated": "2026-11-14T06:36:02+00:00",
+      "retry_after": "2026-11-14T12:36:02+00:00"
+    },
+    "4c230fac0bd91bd27f5ab913224e5604216eed856c6227b869d316211d4659f5": {
+      "title": "ITU PP-26, Doha: Rwanda highlights AI and space technologies as drivers of economic transformation at ITU Conference",
+      "bucket": "technology",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:36:25+00:00",
+      "updated": "2026-11-14T06:36:25+00:00",
+      "retry_after": "2026-11-14T12:36:25+00:00"
+    },
+    "f1526d7b49c9720c6cddba1af1f8077f732f0d2f290aac69bbdeec8e59aaa604": {
+      "title": "Bofors deal: The mysterious corruption scandal that unseated India’s government",
+      "bucket": "politics",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:36:29+00:00",
+      "updated": "2026-11-14T06:36:29+00:00"
+    },
+    "c0128dd5c2f8abf0bbf542c0ff4e80f4825588a17d0a279b73e8476549c835c8": {
+      "title": "Stench of ‘Sandpapergate’ set to linger as scandal reignites",
+      "bucket": "pakistan",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:37:03+00:00",
+      "updated": "2026-11-14T06:37:03+00:00",
+      "retry_after": "2026-11-14T12:37:03+00:00"
+    },
+    "816564d601832e07be5cbcaaa6732358923b2b0a1040537ffb1fe84995015740": {
+      "title": "‘I Play Rocky’ box office collection day 1: Amid massive ‘Ramayana’ turnout, Sylvester Stallone’s biograp",
+      "bucket": "entertainment",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:37:05+00:00",
+      "updated": "2026-11-14T06:37:05+00:00"
+    },
+    "1a6e04ab473ad8fc901b4c595eec7f9d346b21147f31dc58dece74864b5bd7df": {
+      "title": "Rwanda Rejects Macron’s Push to Withdraw Mushikiwabo From Francophonie Race",
+      "bucket": "world",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:37:10+00:00",
+      "updated": "2026-11-14T06:37:10+00:00"
+    },
+    "c003c71818c8e41cf3a020b14675ca10945adb7a54ddb03b897aaf60f9c6a082": {
+      "title": "Sindh plans one-window for builders at ABAD House",
+      "bucket": "business",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:37:35+00:00",
+      "updated": "2026-11-14T06:37:35+00:00",
+      "retry_after": "2026-11-14T12:37:35+00:00"
+    },
+    "25e92830a01cfbc6fdd582db0af41cdf313e9253d1838c83145d4c02b5cba7b7": {
+      "title": "The Ministry of Education and Training has finalized regulations on awarding bonus points in university entrance exams.",
+      "bucket": "education",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:37:37+00:00",
+      "updated": "2026-11-14T06:37:37+00:00"
+    },
+    "95e89dbe161c8e99063cbf54727f578297cf3016232529c9fab9a0b88668c3a4": {
+      "title": "UAH alumnus returns to lead Earth System Science Center, advancing university’s vision for Earth data science and AI-driven research | Newswise",
+      "bucket": "science",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:38:36+00:00",
+      "updated": "2026-11-14T06:38:36+00:00",
+      "retry_after": "2026-11-14T12:38:36+00:00"
+    },
+    "91299db34513a93dcd7aa81d0b6b3f601927fa878275e7151afcd56a8e6cfc42": {
+      "title": "Germany sink sorry Serbia to set up crunch Netherlands clash",
+      "bucket": "cricket",
+      "feed": "no_image",
+      "story": "skipped",
+      "created": "2026-11-14T06:39:14+00:00",
+      "updated": "2026-11-14T06:39:14+00:00",
+      "retry_after": "2026-11-14T12:39:14+00:00"
+    },
+    "652ef4cebcc2d6cfc28d20a29be65eace783345ad6adb36bc964fb9fb2a5d438": {
+      "title": "Ex-Nvidia CEO Jensen Huang affair scandal: Why Trump aide Howard Lutnick is in the firing line",
+      "bucket": "breaking",
+      "feed": "unsuitable",
+      "story": "skipped",
+      "created": "2026-11-14T06:39:47+00:00",
+      "updated": "2026-11-14T06:39:47+00:00"
     }
   },
   "version": 2
