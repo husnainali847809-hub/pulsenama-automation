@@ -1,10 +1,10 @@
-name: Cinematic Poetry Demo
+name: Pulsenama AI Poetry Video Creator
 
 on:
   workflow_dispatch:
     inputs:
       mood:
-        description: "Poetry mood (also selects matching instrumental music)"
+        description: "Poetry mood and matching background"
         required: true
         default: "sad"
         type: choice
@@ -26,9 +26,9 @@ permissions:
   contents: read
 
 jobs:
-  poetry-demo:
+  poetry-video:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,7 +44,7 @@ jobs:
           pip install requests Pillow
       - name: Validate script
         run: python -m py_compile poetry_demo.py
-      - name: Generate poetry video demo
+      - name: Generate poetry video
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
@@ -53,10 +53,10 @@ jobs:
           POETRY_LANGUAGE: ${{ inputs.language }}
           POETRY_DURATION: ${{ inputs.duration }}
         run: python poetry_demo.py
-      - name: Upload demo artifact
+      - name: Upload MP4 and attribution note
         uses: actions/upload-artifact@v4
         with:
-          name: cinematic-poetry-demo
+          name: pulsenama-poetry-video
           path: |
             poetry_demo.mp4
             poetry_demo.txt
