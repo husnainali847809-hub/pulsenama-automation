@@ -256,7 +256,7 @@ def get_online_image():
                             if chunk: out.write(chunk)
                 if path.stat().st_size>20000:
                     BACKGROUND_CREDIT=f"Pexels photo by {photo.get('photographer','Pexels contributor')} "
-                    print("Using a licensed mood-matched Pexels photo.")
+                    print("Using a mood-matched Pexels photo.")
                     return path
         except (requests.RequestException, ValueError, KeyError, OSError) as exc:
             print(f"Pexels photo search failed; trying Wikimedia Commons: {exc}")
@@ -273,10 +273,9 @@ def get_online_image():
         for page in pages.values():
             info=(page.get("imageinfo") or [{}])[0]
             meta=info.get("extmetadata") or {}
-            lic=(meta.get("LicenseShortName") or {}).get("value","")
             url=info.get("thumburl") or info.get("url")
-            if url: candidates.append((page,info,lic,url))
-        for page,info,lic,url in candidates:
+            if url: candidates.append((page,info,url))
+        for page,info,url in candidates:
             meta=info.get("extmetadata",{})
             artist=(meta.get("Artist") or {}).get("value","Unknown")
             filename=page.get("title","").replace("File:","",1)
@@ -582,7 +581,6 @@ def get_online_music():
             info=(page.get("imageinfo") or [{}])[0]
             mime=(info.get("mime") or "").lower()
             meta=info.get("extmetadata") or {}
-            lic=(meta.get("LicenseShortName") or {}).get("value","")
             if not mime.startswith("audio/"): continue
             url=info.get("url")
             if url: candidates.append((page,info,lic,url))
@@ -591,7 +589,7 @@ def get_online_music():
             try:
                 ext=Path(url.split("?")[0]).suffix.lower()
                 if ext not in (".ogg",".oga",".mp3",".wav",".flac",".m4a"): continue
-                path=WORK/("licensed_music"+ext)
+                path=WORK/("online_music"+ext)
                 with requests.get(url,stream=True,timeout=90,
                   headers={"User-Agent":"PulsenamaPoetryVideo/1.0","Referer":"https://commons.wikimedia.org/"}) as response:
                     response.raise_for_status()
@@ -610,7 +608,7 @@ def get_online_music():
                 title=page.get("title","Audio track")
                 page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
                 BACKGROUND_CREDIT += f"\nMusic: Wikimedia Commons {title} | Creator: {artist} | {page_url}"
-                print(f"Using licensed online instrumental candidate: {title} ({lic}).")
+                print(f"Using online instrumental candidate: {title}.")
                 return path
             except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
                 print(f"Audio candidate unavailable; trying another: {exc}")
