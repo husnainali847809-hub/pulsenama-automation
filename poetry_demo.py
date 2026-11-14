@@ -574,90 +574,126 @@ def text_page_png(title, lines):
 
 
 def get_online_music():
-    """Find a popular vocal track, widening the Jamendo search if a mood is quiet."""
+    """Choose vocals by poem language: English tracks for English, PAK/IND artists for Urdu."""
     global BACKGROUND_CREDIT
     client_id=os.getenv("JAMENDO_CLIENT_ID","").strip()
     if not client_id:
         print("Missing JAMENDO_CLIENT_ID; add it as a GitHub Actions secret.")
         return None
 
-    mood_tags={
-      "sad":"sad emotional",
-      "romantic":"romance pop",
-      "motivational":"energetic rock",
-      "deep":"emotional soul",
-      "peaceful":"chillout acoustic",
-      "rain":"sad chillout",
-      "memories":"nostalgic emotional",
-    }.get(MOOD,"emotional pop")
-
-    # Jamendo's tracks endpoint returns album tracks only by default.
-    # Explicitly include singles too, and widen the search before giving up.
-    common={
-      "client_id":client_id,"format":"json","limit":100,
-      "type":"single albumtrack",
-      "vocalinstrumental":"vocal",
-      "audioformat":"mp32","audiodlformat":"mp32",
-      "boost":"popularity_week",
-    }
-    searches=[
-      {"fuzzytags":mood_tags.replace(" ","+"),"durationbetween":"35_600"},
-      {"fuzzytags":mood_tags.replace(" ","+")},
-      {"durationbetween":"35_600"},
-      {},
-    ]
-
-    seen=set()
     try:
-        for index,extra in enumerate(searches,1):
-            params={**common,**extra}
+        candidates=[]
+        if LANG == "English":
+            mood_tags={
+              "sad":"sad emotional pop",
+              "romantic":"romance pop",
+              "motivational":"energetic pop rock",
+              "deep":"emotional soul pop",
+              "peaceful":"chillout acoustic pop",
+              "rain":"sad chillout pop",
+              "memories":"nostalgic emotional pop",
+            }.get(MOOD,"pop")
+            params={
+              "client_id":client_id,"format":"json","limit":100,
+              "type":"single albumtrack","vocalinstrumental":"vocal",
+              "lang":"en","fuzzytags":mood_tags.replace(" ","+"),
+              "audioformat":"mp32","audiodlformat":"mp32",
+              "boost":"popularity_week","include":"musicinfo",
+            }
             response=requests.get("https://api.jamendo.com/v3.0/tracks/",params=params,timeout=40)
             response.raise_for_status()
             payload=response.json()
             headers=payload.get("headers") or {}
             if headers.get("status")!="success":
-                raise RuntimeError(headers.get("error_message") or "Jamendo API error")
-            tracks=payload.get("results") or []
-            print(f"Jamendo vocal search {index}: {len(tracks)} tracks returned.")
-            for track in tracks:
-                track_id=str(track.get("id",""))
-                if not track_id or track_id in seen:
-                    continue
-                seen.add(track_id)
-                allowed=track.get("audiodownload_allowed")
-                can_download=(allowed is True or str(allowed).lower() in ("1","true")) and bool(track.get("audiodownload"))
-                if not can_download:
-                    continue
-                path=WORK/"jamendo_vocal_song.mp3"
-                try:
-                    with requests.get(track["audiodownload"],stream=True,timeout=90) as download:
-                        download.raise_for_status()
-                        with path.open("wb") as out:
-                            for chunk in download.iter_content(256*1024):
-                                if chunk:
-                                    out.write(chunk)
-                    if path.stat().st_size<50000:
-                        path.unlink(missing_ok=True)
-                        continue
-                    probe=subprocess.run(
-                      ["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
-                      stdout=subprocess.DEVNULL,stderr=subprocess.PIPE
-                    )
-                    if probe.returncode!=0:
-                        path.unlink(missing_ok=True)
-                        continue
-                    title=track.get("name","Jamendo song")
-                    artist=track.get("artist_name","Jamendo artist")
-                    page=f"https://www.jamendo.com/track/{track_id}"
-                    BACKGROUND_CREDIT += f"\nSong: {title} — {artist} | Jamendo: {page}"
-                    print(f"Using a popular vocal song from Jamendo: {title} — {artist}.")
-                    return path
-                except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
-                    print(f"Jamendo track download failed; trying the next vocal track: {exc}")
+                raise RuntimeError(headers.get("error_message") or "Jamendo English-track search failed")
+            candidates=payload.get("results") or []
+            print(f"Jamendo returned {len(candidates)} popular English vocal tracks.")
+        else:
+            # Jamendo's trending chart can be restricted to the artist's country.
+            # PAK and IND keep Urdu videos within Pakistani/Indian music creators.
+            chart_ids=[]
+            for country in ("PAK","IND"):
+                params={"client_id":client_id,"format":"json","limit":100,
+                        "order":"trending","country":country}
+                response=requests.get("https://api.jamendo.com/v3.0/charts/track/",params=params,timeout=40)
+                response.raise_for_status()
+                payload=response.json()
+                headers=payload.get("headers") or {}
+                if headers.get("status")!="success":
+                    raise RuntimeError(headers.get("error_message") or f"Jamendo {country} trending chart failed")
+                ids=[str(item.get("id")) for item in (payload.get("results") or []) if item.get("id")]
+                print(f"Jamendo {country} trending chart: {len(ids)} tracks.")
+                chart_ids.extend(ids)
+            # Preserve chart order while removing duplicates.
+            chart_ids=list(dict.fromkeys(chart_ids))
+            if chart_ids:
+                params={"client_id":client_id,"format":"json","limit":200,
+                        "id":"+".join(chart_ids),"type":"single albumtrack",
+                        "vocalinstrumental":"vocal","audioformat":"mp32",
+                        "audiodlformat":"mp32","include":"musicinfo"}
+                response=requests.get("https://api.jamendo.com/v3.0/tracks/",params=params,timeout=40)
+                response.raise_for_status()
+                payload=response.json()
+                headers=payload.get("headers") or {}
+                if headers.get("status")!="success":
+                    raise RuntimeError(headers.get("error_message") or "Jamendo regional-track lookup failed")
+                by_id={str(track.get("id")):track for track in (payload.get("results") or [])}
+                candidates=[by_id[track_id] for track_id in chart_ids if track_id in by_id]
+                print(f"Jamendo returned {len(candidates)} Pakistani/Indian trending-chart vocal tracks.")
+            else:
+                print("No Pakistani or Indian tracks appeared in Jamendo's trending charts.")
+
+        seen=set()
+        for track in candidates:
+            track_id=str(track.get("id",""))
+            if not track_id or track_id in seen:
+                continue
+            seen.add(track_id)
+            musicinfo=track.get("musicinfo") or {}
+            vocal=musicinfo.get("vocalinstrumental","vocal")
+            if str(vocal).lower()!="vocal":
+                continue
+            allowed=track.get("audiodownload_allowed")
+            if not (allowed is True or str(allowed).lower() in ("1","true")):
+                continue
+            url=track.get("audiodownload")
+            if not url:
+                continue
+            path=WORK/"jamendo_vocal_song.mp3"
+            try:
+                with requests.get(url,stream=True,timeout=90) as download:
+                    download.raise_for_status()
+                    with path.open("wb") as out:
+                        for chunk in download.iter_content(256*1024):
+                            if chunk:
+                                out.write(chunk)
+                if path.stat().st_size<50000:
                     path.unlink(missing_ok=True)
-        print("Jamendo found no downloadable vocal tracks after four progressively broader searches.")
+                    continue
+                probe=subprocess.run(
+                  ["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
+                  stdout=subprocess.DEVNULL,stderr=subprocess.PIPE
+                )
+                if probe.returncode!=0:
+                    path.unlink(missing_ok=True)
+                    continue
+                title=track.get("name","Jamendo song")
+                artist=track.get("artist_name","Jamendo artist")
+                page=f"https://www.jamendo.com/track/{track_id}"
+                region="English" if LANG=="English" else "Pakistani/Indian"
+                BACKGROUND_CREDIT += f"\\nSong: {title} — {artist} ({region} vocals) | Jamendo: {page}"
+                print(f"Using {region} vocal song: {title} — {artist}.")
+                return path
+            except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
+                print(f"Song download failed; trying the next matching vocal track: {exc}")
+                path.unlink(missing_ok=True)
+
+        if LANG=="English":
+            print("Jamendo found no downloadable English vocal song.")
+        else:
+            print("Jamendo found no downloadable Pakistani/Indian vocal song; no foreign song will be substituted.")
     except (requests.RequestException,ValueError,KeyError,RuntimeError) as exc:
-        print(f"Jamendo vocal-song search failed: {exc}")
+        print(f"Jamendo language-specific song search failed: {exc}")
     return None
 
 def make_mood_music(title, lines):
