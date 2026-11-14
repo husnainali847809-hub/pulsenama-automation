@@ -649,7 +649,7 @@ def get_online_music():
                     title=track.get("name","Jamendo song")
                     artist=track.get("artist_name","Jamendo artist")
                     page=f"https://www.jamendo.com/track/{track_id}"
-                    BACKGROUND_CREDIT += f"\\nSong: {title} — {artist} | Jamendo: {page}"
+                    BACKGROUND_CREDIT += f"\nSong: {title} — {artist} | Jamendo: {page}"
                     print(f"Using a popular vocal song from Jamendo: {title} — {artist}.")
                     return path
                 except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
