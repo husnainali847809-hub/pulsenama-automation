@@ -319,10 +319,6 @@ def text_page_png(title, lines):
                 d.text((65,y),chunk,font=body_font,fill=(255,252,244,255))
             y+=143
         y+=9
-    # Small, consistent brand watermark on every generated video.
-    watermark_font=get_font(27)
-    d.text((W-285,H-92),"PULSENAMA",font=watermark_font,fill=(255,255,255,190),
-      stroke_width=2,stroke_fill=(0,0,0,150))
     path=WORK/"complete_poem_page.png"
     layer.save(path)
     return path
