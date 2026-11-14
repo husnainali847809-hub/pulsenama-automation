@@ -172,19 +172,45 @@ def get_online_image():
                 url=info.get("thumburl") or info.get("url")
                 if url: candidates.append((page,info,lic,url))
         for page,info,lic,url in candidates:
-            path=WORK/"online_background.jpg"
-            with requests.get(url,stream=True,timeout=60) as response:
-                response.raise_for_status()
-                with path.open("wb") as out:
-                    for chunk in response.iter_content(1024*1024):
-                        if chunk: out.write(chunk)
-            if path.stat().st_size>20000:
-                meta=info.get("extmetadata",{})
-                artist=(meta.get("Artist") or {}).get("value","Unknown")
-                page_url="https://commons.wikimedia.org/wiki/"+page.get("title","").replace(" ","_")
-                BACKGROUND_CREDIT=f"Wikimedia Commons: {page.get('title','image')} | Creator: {artist} | Licence: {lic} | {page_url}"
-                print("Using a reusable Wikimedia Commons image; attribution recorded.")
-                return path
+            meta=info.get("extmetadata",{})
+            artist=(meta.get("Artist") or {}).get("value","Unknown")
+            filename=page.get("title","").replace("File:","",1)
+            # Commons thumbnail URLs can occasionally return 403. Try the original
+            # URL and Commons' own FilePath redirect independently, then continue
+            # to the next licensed candidate instead of aborting the entire search.
+            urls=[url]
+            if info.get("url") and info.get("url") not in urls:
+                urls.append(info["url"])
+            if filename:
+                from urllib.parse import quote
+                redirect="https://commons.wikimedia.org/wiki/Special:FilePath/"+quote(filename)
+                if redirect not in urls: urls.append(redirect)
+            for candidate_url in urls:
+                try:
+                    path=WORK/"online_background.jpg"
+                    with requests.get(candidate_url,stream=True,timeout=60,
+                      headers={"User-Agent":"PulsenamaPoetryVideo/1.0 (image download; contact: project owner)",
+                               "Referer":"https://commons.wikimedia.org/"}) as response:
+                        response.raise_for_status()
+                        content_type=response.headers.get("Content-Type","").lower()
+                        if "image" not in content_type:
+                            continue
+                        with path.open("wb") as out:
+                            for chunk in response.iter_content(1024*1024):
+                                if chunk: out.write(chunk)
+                    if path.stat().st_size>20000:
+                        try:
+                            with Image.open(path) as check: check.verify()
+                        except Exception:
+                            path.unlink(missing_ok=True)
+                            continue
+                        page_url="https://commons.wikimedia.org/wiki/"+page.get("title","").replace(" ","_")
+                        BACKGROUND_CREDIT=f"Wikimedia Commons: {page.get('title','image')} | Creator: {artist} | Licence: {lic} | {page_url}"
+                        print("Using a reusable Wikimedia Commons image; attribution recorded.")
+                        return path
+                except (requests.RequestException, OSError) as exc:
+                    print(f"Commons candidate download failed; trying another URL/image: {exc}")
+                    continue
     except (requests.RequestException, ValueError, KeyError, OSError) as exc:
         print(f"Wikimedia Commons image search failed: {exc}")
     return None
