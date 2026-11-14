@@ -219,9 +219,9 @@ def make_mood_music(title, lines):
             if mood == "motivational":
                 pulse = math.sin(2*math.pi*82*t) * (0.025 * max(0.0, 1.0 - (t % beat)/0.16))
             sample = max(-0.85, min(0.85, pad + pluck + pulse))
-            fade_in = min(1.0, t / 1.4)
+            fade_in = min(1.0, t / 0.16)
             fade_out = min(1.0, max(0.0, (DURATION - t) / 2.2))
-            sample *= fade_in * fade_out * 0.72
+            sample *= fade_in * fade_out * 0.90
             # Slight stereo width; both channels remain fully instrumental.
             left = int(max(-1.0, min(1.0, sample * 0.96)) * 32767)
             right = int(max(-1.0, min(1.0, sample * 1.04)) * 32767)
@@ -238,10 +238,10 @@ def render_video(title,lines,bg,music):
     inputs=[]
     if bg.suffix==".mp4":
         inputs+=["-stream_loop","-1","-i",str(bg)]
-        base="[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1,fps=24[bg]"
+        base="[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
     else:
         inputs+=["-loop","1","-i",str(bg)]
-        base="[0:v]scale=720:1280,zoompan=z='min(zoom+0.00035,1.08)':d=1:s=720x1280:fps=24,setsar=1[bg]"
+        base="[0:v]scale=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
     segment=DURATION/len(lines); overlays=[]
     for i,line in enumerate(lines):
         p=text_png(line,i); inputs+=["-loop","1","-i",str(p)]
@@ -254,7 +254,7 @@ def render_video(title,lines,bg,music):
         filters.append(f"[{previous}][t{n}]overlay=(W-w)/2:(H-h)/2:enable='between(t,{start:.3f},{end:.3f})'[{label}]")
         previous=label
     audio_index=len(lines)+1
-    filters.append(f"[{audio_index}:a]volume=0.42,afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,DURATION-3)}:d=3[aout]")
+    filters.append(f"[{audio_index}:a]volume=1.10,alimiter=limit=0.95,afade=t=in:st=0:d=0.18,afade=t=out:st={max(0,DURATION-3)}:d=3[aout]")
     cmd+=["-filter_complex",";".join(filters),"-map",f"[{previous}]","-map","[aout]","-t",str(DURATION),
       "-r",str(FPS),"-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-c:a","aac","-b:a","128k",
       "-movflags","+faststart",str(OUT)]
