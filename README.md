@@ -11,12 +11,17 @@ Pulsenama automatically creates short vertical poetry videos in Urdu, Roman Urdu
 - If no vocal song can be fetched, creates and uses its own mood-matched piano-and-strings instrumental so video generation continues.
 - Keeps a Google Drive music-loader hook in the pipeline for the planned Drive song library; the Drive connection itself is not configured yet.
 - Renders a 1080×1920 MP4 and a text/attribution file.
+- Creates a Buffer caption in the poem's language, adds a short mood-matched line, and includes relevant Urdu or English hashtags automatically.
 
 ## Automatic schedule
 
 GitHub Actions runs four times daily at approximately **09:00, 13:00, 17:00, and 21:00 Pakistan time**. Scheduled posts rotate languages: **09:00 Urdu, 13:00 English, 17:00 Urdu, and 21:00 English**. This guarantees Urdu poetry is included every day instead of relying on random language selection. GitHub may start scheduled jobs a little later than the exact cron time. You can also run the workflow manually from **Actions → Pulsenama AI Poetry Video Creator → Run workflow**.
 
 Each successful run creates a public GitHub Release asset for the MP4 so Buffer can access the video URL.
+
+## Captions and hashtags
+
+Every Buffer post now includes the poem title and lines, a short mood-matched caption, a follow prompt in the same language, and relevant hashtags. Urdu posts use Urdu captions and Urdu hashtags; English posts use English captions and English hashtags. Hashtags also vary by the selected mood.
 
 ## Buffer setup
 
