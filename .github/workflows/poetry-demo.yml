@@ -1,0 +1,64 @@
+name: Cinematic Poetry Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      mood:
+        description: "Poetry mood"
+        required: true
+        default: "sad"
+        type: choice
+        options: [sad, romantic, motivational, deep, peaceful]
+      language:
+        description: "Poetry language"
+        required: true
+        default: "Urdu"
+        type: choice
+        options: [Urdu, Roman Urdu, English]
+      duration:
+        description: "Video duration in seconds"
+        required: true
+        default: "24"
+        type: choice
+        options: ["15", "20", "24", "30", "35"]
+
+permissions:
+  contents: read
+
+jobs:
+  poetry-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install FFmpeg and fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-noto-core fonts-dejavu-core
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests Pillow
+      - name: Validate script
+        run: python -m py_compile poetry_demo.py
+      - name: Generate poetry video demo
+        env:
+          OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: openrouter/free
+          PEXELS_API_KEY: \${{ secrets.PEXELS_API_KEY }}
+          POETRY_MOOD: \${{ inputs.mood }}
+          POETRY_LANGUAGE: \${{ inputs.language }}
+          POETRY_DURATION: \${{ inputs.duration }}
+        run: python poetry_demo.py
+      - name: Upload demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinematic-poetry-demo
+          path: |
+            poetry_demo.mp4
+            poetry_demo.txt
+          if-no-files-found: error
+          retention-days: 7
