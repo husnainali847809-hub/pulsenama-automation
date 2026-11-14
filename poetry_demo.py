@@ -82,15 +82,17 @@ Write only 2 or 3 short lines total (never more than 3), natural and emotionally
 BACKGROUND_CREDIT = "Source details unavailable"
 
 def mood_search_terms():
-    return {
-      "sad":"rainy city night rain window",
-      "romantic":"romantic sunset flowers ocean",
-      "motivational":"sunrise mountain nature",
-      "deep":"starry night sky galaxy",
-      "peaceful":"calm ocean lake forest",
-      "rain":"rain drops window city",
-      "memories":"old street golden hour"
-    }.get(MOOD, "cinematic nature landscape")
+    # Rotate through photographic subjects so consecutive videos do not reuse one look.
+    choices = {
+      "sad":["moody rainy street photography night reflections","misty forest cinematic photography","rain on window city lights photography"],
+      "romantic":["golden hour ocean sunset photography","soft pink sky wildflowers cinematic photography","romantic mountain lake sunset landscape photo"],
+      "motivational":["dramatic sunrise mountain landscape photography","golden sunlight ocean cliffs photography","winding mountain road sunrise cinematic photo"],
+      "deep":["starry sky mountains long exposure photography","dramatic cloudy mountains fine art landscape","moonlit ocean night photography"],
+      "peaceful":["misty lake forest morning photography","calm turquoise ocean aerial landscape photo","sunlight through green forest nature photography"],
+      "rain":["rainy city street reflections cinematic photography","misty mountain rain landscape photography","rain drops on glass blurred city lights photo"],
+      "memories":["old European street golden hour photography","vintage countryside road sunset photo","nostalgic seaside town film photography"],
+    }
+    return random.choice(choices.get(MOOD, ["cinematic nature landscape photography","fine art mountain landscape photo"]))
 
 def get_pexels_video():
     """Return a mood-matched portrait Pexels video, or None if unavailable."""
