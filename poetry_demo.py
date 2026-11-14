@@ -17,21 +17,63 @@ WORK.mkdir(exist_ok=True)
 
 def run(cmd): subprocess.run(cmd,check=True)
 
+def fallback_poem():
+    """Original local fallback so a temporary AI/API response issue does not stop the demo."""
+    poems = {
+      "Urdu": {
+        "sad": ("خاموش رات", ["بارش کی بوندیں کچھ کہتی ہیں", "خاموش گلی میں یادیں رہتی ہیں", "چراغ جلتا ہے تنہائی کے ساتھ", "دل ڈھونڈتا ہے گزری ہوئی بات", "صبح آئے گی، یہ یقین رہے", "ہر اندھیرے کے بعد روشنی رہے"]),
+        "deep": ("خاموش سوال", ["ستاروں سے اک سوال کیا", "خاموشی نے جواب دیا", "جو راستے دل سے نکلتے ہیں", "وہ منزلوں تک پہنچتے ہیں", "وقت ہر راز کھولتا ہے", "صبر نیا حوصلہ دیتا ہے"]),
+        "peaceful": ("سکون کا لمحہ", ["ہوا آہستہ گنگناتی ہے", "جھیل چپکے سے مسکراتی ہے", "فکر کے بادل دور ہوئے", "دل کے موسم روشن ہوئے", "یہ لمحہ بس ٹھہر جائے", "روح کو تھوڑا سکون مل جائے"]),
+      },
+      "Roman Urdu": {
+        "sad": ("Khamosh Raat", ["Barish ki boondein kuch kehti hain", "Khamosh gali mein yaadein rehti hain", "Chiragh jalta hai tanhai ke saath", "Dil dhoondta hai guzri hui baat", "Subah aaye gi, ye yaqeen rahe", "Har andhere ke baad roshni rahe"]),
+        "deep": ("Khamosh Sawal", ["Sitaron se aik sawal kiya", "Khamoshi ne jawab diya", "Jo raste dil se nikalte hain", "Woh manzilon tak pohanchte hain", "Waqt har raaz kholta hai", "Sabr naya hosla deta hai"]),
+        "peaceful": ("Sukoon Ka Lamha", ["Hawa aahista gungunati hai", "Jheel chupke se muskurati hai", "Fikr ke badal door huay", "Dil ke mausam roshan huay", "Ye lamha bas thehar jaye", "Rooh ko thora sukoon mil jaye"]),
+      },
+      "English": {
+        "sad": ("After the Rain", ["The quiet streets remember rain", "Soft lights glow through windowpanes", "Some distant moments gently stay", "Then slowly drift and fade away", "A new dawn waits beyond the blue", "And brings a little hope anew"]),
+        "deep": ("Quiet Questions", ["The stars keep secrets of the night", "The silence holds a softer light", "Each road can teach the heart to grow", "Each passing hour has more to show", "Be patient with the things unseen", "Tomorrow brings a space between"]),
+        "peaceful": ("A Gentle Moment", ["The lake is calm beneath the sky", "A silver cloud goes drifting by", "The breeze moves softly through the trees", "The world slows down with every breeze", "Let this small moment softly stay", "And carry all the noise away"]),
+      }
+    }
+    lang = LANG if LANG in poems else "English"
+    mood = MOOD if MOOD in poems[lang] else "sad"
+    title, lines = poems[lang][mood]
+    print("Using built-in original poem fallback; AI response was unavailable or invalid.")
+    return title, lines
+
 def make_poem():
-    if not KEY: raise RuntimeError("Missing OPENROUTER_API_KEY GitHub secret.")
+    if not KEY:
+        raise RuntimeError("Missing OPENROUTER_API_KEY GitHub secret.")
     prompt=f"""Write a completely original short {LANG} poem for a {MOOD} cinematic vertical video.
 Return ONLY valid JSON: {{"title":"short title","lines":["line 1","line 2","line 3","line 4","line 5","line 6"]}}.
 Exactly 6 concise lines, natural language, emotionally meaningful, no famous or copyrighted poetry, no quotes, no emojis, no explanation."""
-    r=requests.post("https://openrouter.ai/api/v1/chat/completions",
-      headers={"Authorization":f"Bearer {KEY}","Content-Type":"application/json"},
-      json={"model":MODEL,"messages":[{"role":"user","content":prompt}],"temperature":0.85,"max_tokens":500},timeout=90)
-    r.raise_for_status()
-    raw=r.json()["choices"][0]["message"]["content"].strip()
-    raw=re.sub(r"^\s*[\x60]{3}(?:json)?\s*|\s*[\x60]{3}\s*$","",raw,flags=re.I)
-    data=json.loads(raw)
-    lines=[str(x).strip() for x in data.get("lines",[]) if str(x).strip()]
-    if len(lines)<4: raise RuntimeError("AI returned too few poetry lines.")
-    return str(data.get("title","A quiet moment"))[:80],lines[:6]
+    try:
+        r=requests.post("https://openrouter.ai/api/v1/chat/completions",
+          headers={"Authorization":f"Bearer {KEY}","Content-Type":"application/json"},
+          json={"model":MODEL,"messages":[{"role":"user","content":prompt}],"temperature":0.75,"max_tokens":500},timeout=90)
+        r.raise_for_status()
+        payload=r.json()
+        choices=payload.get("choices") or []
+        message=choices[0].get("message") if choices else None
+        content=message.get("content") if isinstance(message,dict) else None
+        if isinstance(content,list):
+            content="\n".join(str(part.get("text","")) for part in content if isinstance(part,dict))
+        if not isinstance(content,str) or not content.strip():
+            reason=(choices[0].get("finish_reason") if choices else None) or payload.get("error") or "empty AI content"
+            print(f"OpenRouter returned no poem text ({reason}); switching to fallback.")
+            return fallback_poem()
+        raw=content.strip()
+        raw=re.sub(r"^\\s*[\\x60]{3}(?:json)?\\s*|\\s*[\\x60]{3}\\s*$","",raw,flags=re.I)
+        data=json.loads(raw)
+        lines=[str(x).strip() for x in data.get("lines",[]) if str(x).strip()]
+        if len(lines)<4:
+            print("OpenRouter returned fewer than four lines; switching to fallback.")
+            return fallback_poem()
+        return str(data.get("title") or "A quiet moment")[:80],lines[:6]
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        print(f"OpenRouter poem request failed ({exc}); switching to fallback.")
+        return fallback_poem()
 
 def get_pexels_video():
     if not PEXELS:
