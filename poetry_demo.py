@@ -607,7 +607,6 @@ def get_online_music():
         tracks=payload.get("results") or []
         random.shuffle(tracks)
         # Prefer popular vocal tracks; skip entries that do not allow downloads.
-        tracks.sort(key=lambda t:int(t.get("duration") or 0),reverse=True)
         candidates=[t for t in tracks if t.get("audiodownload_allowed") and t.get("audiodownload")]
         if not candidates:
             candidates=[t for t in tracks if t.get("audio")]
