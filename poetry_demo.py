@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Standalone, manual-only cinematic poetry demo. Never publishes to Buffer."""
-import json, os, re, subprocess, sys
+import json, os, re, subprocess, sys, math, random, wave, struct
 from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -157,7 +157,84 @@ def text_png(text,index):
         y+=65
     p=WORK/f"line_{index}.png"; layer.save(p); return p
 
-def render_video(title,lines,bg):
+
+def make_mood_music(title, lines):
+    """Create an original, royalty-free instrumental bed matched to the poem mood.
+    No voice, speech, or text-to-speech is used."""
+    profiles = {
+        "sad":          {"bpm": 66, "progression": [[0,3,7],[8,0,3],[5,8,0],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.45},
+        "romantic":     {"bpm": 78, "progression": [[0,4,7],[9,0,4],[5,9,0],[7,11,2]], "scale":[0,2,4,5,7,9,11], "brightness":0.68},
+        "peaceful":     {"bpm": 72, "progression": [[0,4,7],[5,9,0],[2,5,9],[7,11,2]], "scale":[0,2,4,5,7,9,11], "brightness":0.58},
+        "deep":         {"bpm": 62, "progression": [[0,3,7],[6,10,1],[8,0,3],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.40},
+        "motivational": {"bpm": 96, "progression": [[0,4,7],[7,11,2],[9,0,4],[5,9,0]], "scale":[0,2,4,5,7,9,11], "brightness":0.82},
+        "rain":         {"bpm": 68, "progression": [[0,3,7],[8,0,3],[5,8,0],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.48},
+        "memories":     {"bpm": 70, "progression": [[0,3,7],[5,8,0],[8,0,3],[3,7,10]], "scale":[0,2,3,5,7,8,10], "brightness":0.46},
+    }
+    mood = MOOD if MOOD in profiles else "peaceful"
+    p = profiles[mood]
+    seed_text = title + "|" + "|".join(lines) + "|" + mood
+    rng = random.Random(sum((i+1)*ord(c) for i,c in enumerate(seed_text)))
+    sample_rate = 22050
+    total = int(DURATION * sample_rate)
+    beat = 60.0 / p["bpm"]
+    bar = beat * 4
+    root = 48 if mood in ("sad","deep","rain","memories") else 50
+    progression = p["progression"]
+    scale = p["scale"]
+    melody = []
+    for bar_i in range(int(math.ceil(DURATION / bar)) + 1):
+        base = root + rng.choice((0, 0, 12))
+        degree = rng.choice(scale)
+        melody.append((bar_i * bar + rng.uniform(0.05, 0.35), base + degree + 12))
+        if rng.random() < 0.55:
+            melody.append((bar_i * bar + beat * rng.choice((1, 2, 3)), base + rng.choice(scale) + 12))
+    melody.sort()
+    out = WORK / "mood_matched_instrumental.wav"
+    with wave.open(str(out), "wb") as wav:
+        wav.setnchannels(2)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        chunk = bytearray()
+        for n in range(total):
+            t = n / sample_rate
+            bar_i = int(t / bar)
+            chord = progression[bar_i % len(progression)]
+            chord_notes = [root + x for x in chord]
+            # Warm, slowly swelling chord pad.
+            pad = 0.0
+            for j, midi in enumerate(chord_notes):
+                freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
+                pad += math.sin(2 * math.pi * freq * t + j * 0.17) * (0.075 if j == 0 else 0.052)
+                pad += math.sin(2 * math.pi * (freq * 2.003) * t + j) * 0.008
+            # Gentle piano-like plucks, with notes chosen from the mood's scale.
+            pluck = 0.0
+            for onset, midi in melody:
+                age = t - onset
+                if 0 <= age < 1.8:
+                    freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
+                    env = math.exp(-age * (2.8 if mood == "motivational" else 2.0))
+                    pluck += (math.sin(2*math.pi*freq*age) + 0.24*math.sin(2*math.pi*freq*2.01*age)) * 0.13 * env
+            # A very soft pulse gives uplifting moods movement without overpowering the poem.
+            pulse = 0.0
+            if mood == "motivational":
+                pulse = math.sin(2*math.pi*82*t) * (0.025 * max(0.0, 1.0 - (t % beat)/0.16))
+            sample = max(-0.85, min(0.85, pad + pluck + pulse))
+            fade_in = min(1.0, t / 1.4)
+            fade_out = min(1.0, max(0.0, (DURATION - t) / 2.2))
+            sample *= fade_in * fade_out * 0.72
+            # Slight stereo width; both channels remain fully instrumental.
+            left = int(max(-1.0, min(1.0, sample * 0.96)) * 32767)
+            right = int(max(-1.0, min(1.0, sample * 1.04)) * 32767)
+            chunk.extend(struct.pack("<hh", left, right))
+            if len(chunk) >= 65536:
+                wav.writeframesraw(chunk)
+                chunk.clear()
+        if chunk:
+            wav.writeframesraw(chunk)
+    print(f"Created original {mood} mood-matched instrumental (no vocals).")
+    return out
+
+def render_video(title,lines,bg,music):
     inputs=[]
     if bg.suffix==".mp4":
         inputs+=["-stream_loop","-1","-i",str(bg)]
@@ -169,7 +246,7 @@ def render_video(title,lines,bg):
     for i,line in enumerate(lines):
         p=text_png(line,i); inputs+=["-loop","1","-i",str(p)]
         overlays.append((i+1,i*segment,(i+1)*segment))
-    cmd=["ffmpeg","-y",*inputs,"-f","lavfi","-i",f"sine=frequency=196:sample_rate=44100:duration={DURATION}"]
+    cmd=["ffmpeg","-y",*inputs,"-i",str(music)]
     filters=[base]; previous="bg"
     for n,start,end in overlays:
         label=f"v{n}"
@@ -177,7 +254,7 @@ def render_video(title,lines,bg):
         filters.append(f"[{previous}][t{n}]overlay=(W-w)/2:(H-h)/2:enable='between(t,{start:.3f},{end:.3f})'[{label}]")
         previous=label
     audio_index=len(lines)+1
-    filters.append(f"[{audio_index}:a]volume=0.035,lowpass=f=700,afade=t=in:st=0:d=2,afade=t=out:st={max(0,DURATION-3)}:d=3[aout]")
+    filters.append(f"[{audio_index}:a]volume=0.42,afade=t=in:st=0:d=1.2,afade=t=out:st={max(0,DURATION-3)}:d=3[aout]")
     cmd+=["-filter_complex",";".join(filters),"-map",f"[{previous}]","-map","[aout]","-t",str(DURATION),
       "-r",str(FPS),"-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-c:a","aac","-b:a","128k",
       "-movflags","+faststart",str(OUT)]
@@ -188,7 +265,8 @@ def render_video(title,lines,bg):
 def main():
     print(f"Generating {MOOD} / {LANG} / {DURATION}s poetry demo.")
     title,lines=make_poem(); bg=get_pexels_video() or generated_background()
-    render_video(title,lines,bg)
+    music=make_mood_music(title,lines)
+    render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
 if __name__=="__main__":
