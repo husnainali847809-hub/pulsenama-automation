@@ -12,7 +12,7 @@ PIXABAY=os.getenv("PIXABAY_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
 # Automatically choose creative settings; no workflow questions.
 MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
-LANG=random.choice(["English","Urdu","Roman Urdu"])
+LANG="English"
 DURATION=random.choice([18,20,22,24])
 OUT,WORK=Path("poetry_demo.mp4"),Path("poetry_demo_work")
 WORK.mkdir(exist_ok=True)
