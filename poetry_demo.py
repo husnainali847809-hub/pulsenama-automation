@@ -103,7 +103,8 @@ def get_pexels_video():
 
 def generated_background():
     """Create a fresh, original cinematic nature illustration for every run (no stock footage)."""
-    rng = random.Random()\n    rng_sun_x = rng.uniform(0.35, 0.68)
+    rng = random.Random()
+    rng_sun_x = rng.uniform(0.35, 0.68)
     img = Image.new("RGB", (W, H))
     px = img.load()
     palettes = {
