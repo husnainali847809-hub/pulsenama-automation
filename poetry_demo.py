@@ -218,6 +218,78 @@ def get_online_image():
         print(f"Wikimedia Commons image search failed: {exc}")
     return None
 
+
+def get_unsplash_image():
+    """Fetch a real photograph from Unsplash's public search endpoint; never generate art."""
+    global BACKGROUND_CREDIT
+    # Short search phrases work better than long keyword strings on photo libraries.
+    terms = {
+      "sad": ["rainy street night", "misty forest", "rain window city lights"],
+      "romantic": ["sunset ocean", "wildflowers golden hour", "mountain lake sunset"],
+      "motivational": ["mountain sunrise", "ocean cliffs sunrise", "mountain road dawn"],
+      "deep": ["starry mountains", "dramatic cloudy mountains", "moonlit ocean"],
+      "peaceful": ["misty lake forest", "calm turquoise ocean", "sunlight green forest"],
+      "rain": ["rainy city reflections", "misty mountains rain", "raindrops window city"],
+      "memories": ["old street golden hour", "countryside road sunset", "seaside town film"],
+    }.get(MOOD, ["cinematic nature landscape"])
+    headers = {
+      "User-Agent": "Mozilla/5.0 (compatible; PulsenamaPoetryVideo/1.0)",
+      "Accept": "application/json",
+      "Referer": "https://unsplash.com/",
+    }
+    for query in terms:
+        try:
+            response = requests.get(
+              "https://unsplash.com/napi/search/photos",
+              params={"query": query, "per_page": 20, "orientation": "portrait"},
+              headers=headers, timeout=30)
+            response.raise_for_status()
+            photos = response.json().get("results", [])
+            random.shuffle(photos)
+            for photo in photos:
+                urls = photo.get("urls") or {}
+                image_url = urls.get("regular") or urls.get("full") or urls.get("raw")
+                if not image_url:
+                    continue
+                path = WORK / "online_background.jpg"
+                try:
+                    with requests.get(image_url, stream=True, timeout=60, headers=headers) as image_response:
+                        image_response.raise_for_status()
+                        if "image" not in image_response.headers.get("Content-Type", "").lower():
+                            continue
+                        with path.open("wb") as out:
+                            for chunk in image_response.iter_content(1024 * 1024):
+                                if chunk:
+                                    out.write(chunk)
+                    if path.stat().st_size < 20000:
+                        path.unlink(missing_ok=True)
+                        continue
+                    try:
+                        with Image.open(path) as check:
+                            check.verify()
+                    except Exception:
+                        path.unlink(missing_ok=True)
+                        continue
+                    user = photo.get("user") or {}
+                    creator = user.get("name", "Unsplash contributor")
+                    profile = user.get("links", {}).get("html", "https://unsplash.com/")
+                    page_url = photo.get("links", {}).get("html", "https://unsplash.com/")
+                    BACKGROUND_CREDIT = (
+                      f"Unsplash photo by {creator} | Unsplash licence | "
+                      f"Photo: {page_url} | Creator: {profile}"
+                    )
+                    print(f"Using a real mood-matched Unsplash photograph: {creator}.")
+                    return path
+                except (requests.RequestException, OSError) as exc:
+                    print(f"Unsplash photo candidate failed; trying another: {exc}")
+                    path.unlink(missing_ok=True)
+                    continue
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            print(f"Unsplash search unavailable for '{query}': {exc}")
+            continue
+    return None
+
+
 def generated_background():
     """Create a fresh, original cinematic nature illustration for every run (no stock footage)."""
     rng = random.Random()
@@ -565,7 +637,10 @@ def main():
     if bg is None:
         bg=get_online_image()
     if bg is None:
-        raise RuntimeError("No reusable internet image was found. Add PEXELS_API_KEY or retry later; no AI image will be generated.")
+        print("Pexels/Wikimedia did not return a usable photo; trying Unsplash.")
+        bg=get_unsplash_image()
+    if bg is None:
+        raise RuntimeError("No reusable internet photograph could be downloaded from Pexels, Wikimedia Commons, or Unsplash. Check GitHub Actions network access and retry; no AI image will be generated.")
     music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
