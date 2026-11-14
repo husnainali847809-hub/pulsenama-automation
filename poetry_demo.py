@@ -12,7 +12,7 @@ PIXABAY=os.getenv("PIXABAY_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
 # Automatically choose creative settings; no workflow questions.
 MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
-LANG="Urdu"
+LANG=random.choice(["English","Urdu","Roman Urdu"])
 DURATION=random.choice([18,20,22,24])
 OUT,WORK=Path("poetry_demo.mp4"),Path("poetry_demo_work")
 WORK.mkdir(exist_ok=True)
@@ -723,7 +723,7 @@ def render_video(title,lines,bg,music):
     filters=[base,
       "[1:v]format=rgba,fade=t=in:st=1.35:d=0.65:alpha=1[poem]",
       "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,1.30,"+str(DURATION)+")'[vout]",
-      "[2:a]volume=1.25,loudnorm=I=-16:TP=-1.5:LRA=9,alimiter=limit=0.96,afade=t=in:st=0:d=1.25,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
+      "[2:a]volume=1.6,loudnorm=I=-14:TP=-1.0:LRA=8,alimiter=limit=0.99,afade=t=in:st=0:d=1.25,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
     cmd=["ffmpeg","-y",*inputs,"-filter_complex",";".join(filters),
       "-map","[vout]","-map","[aout]","-t",str(DURATION),"-r",str(FPS),
       "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-s","1080x1920",
