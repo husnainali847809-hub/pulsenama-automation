@@ -5,7 +5,7 @@ from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-W, H, FPS = 720, 1280, 24
+W, H, FPS = 1080, 1920, 24
 KEY=os.getenv("OPENROUTER_API_KEY","").strip()
 PEXELS=os.getenv("PEXELS_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
@@ -78,28 +78,116 @@ Exactly 6 concise lines, natural language, emotionally meaningful, no famous or 
         print(f"OpenRouter poem request failed ({exc}); switching to fallback.")
         return fallback_poem()
 
+BACKGROUND_CREDIT = "Source details unavailable"
+
+def mood_search_terms():
+    return {
+      "sad":"rainy city night rain window",
+      "romantic":"romantic sunset flowers ocean",
+      "motivational":"sunrise mountain nature",
+      "deep":"starry night sky galaxy",
+      "peaceful":"calm ocean lake forest",
+      "rain":"rain drops window city",
+      "memories":"old street golden hour"
+    }.get(MOOD, "cinematic nature landscape")
+
 def get_pexels_video():
+    """Return a mood-matched portrait Pexels video, or None if unavailable."""
     if not PEXELS:
-        print("No PEXELS_API_KEY; using original generated cinematic artwork."); return None
-    terms={"sad":"rainy city night rain window","romantic":"romantic sunset lake",
-      "motivational":"sunrise mountain nature","deep":"starry night sky","peaceful":"calm ocean waves"}
-    r=requests.get("https://api.pexels.com/videos/search",headers={"Authorization":PEXELS},
-      params={"query":terms.get(MOOD,"cinematic nature"),"orientation":"portrait","per_page":8},timeout=30)
-    r.raise_for_status(); choices=[]
-    for v in r.json().get("videos",[]):
-        for f in v.get("video_files",[]):
-            if f.get("link") and f.get("file_type")=="video/mp4":
-                w,h=int(f.get("width") or 0),int(f.get("height") or 0)
-                if h>=720 and h>w: choices.append((w*h,f["link"]))
-    if not choices: return None
-    path=WORK/"background.mp4"
-    with requests.get(max(choices)[1],stream=True,timeout=90) as r:
+        print("No PEXELS_API_KEY; moving to online image sources.")
+        return None
+    try:
+        r=requests.get("https://api.pexels.com/videos/search",
+          headers={"Authorization":PEXELS},
+          params={"query":mood_search_terms(),"orientation":"portrait","per_page":12},timeout=30)
         r.raise_for_status()
-        with path.open("wb") as out:
-            for chunk in r.iter_content(1024*1024):
-                if chunk: out.write(chunk)
-    if path.stat().st_size<100000: raise RuntimeError("Pexels video download incomplete.")
-    print("Using portrait background footage from Pexels."); return path
+        choices=[]
+        for video in r.json().get("videos",[]):
+            for item in video.get("video_files",[]):
+                if item.get("link") and item.get("file_type")=="video/mp4":
+                    vw,vh=int(item.get("width") or 0),int(item.get("height") or 0)
+                    if vh>=720 and vh>vw:
+                        choices.append((vw*vh,item["link"]))
+        if not choices:
+            print("No suitable portrait Pexels video found.")
+            return None
+        path=WORK/"background.mp4"
+        with requests.get(max(choices)[1],stream=True,timeout=90) as response:
+            response.raise_for_status()
+            with path.open("wb") as out:
+                for chunk in response.iter_content(1024*1024):
+                    if chunk: out.write(chunk)
+        if path.stat().st_size<100000:
+            path.unlink(missing_ok=True)
+            return None
+        print("Using mood-matched portrait video from Pexels.")
+        return path
+    except (requests.RequestException, ValueError, KeyError, OSError) as exc:
+        print(f"Pexels video search failed; trying images: {exc}")
+        return None
+
+def get_online_image():
+    """Fetch a mood-matched reusable image from Pexels or Wikimedia Commons."""
+    global BACKGROUND_CREDIT
+    terms=mood_search_terms()
+    if PEXELS:
+        try:
+            r=requests.get("https://api.pexels.com/v1/search",
+              headers={"Authorization":PEXELS},
+              params={"query":terms,"orientation":"portrait","per_page":15},timeout=30)
+            r.raise_for_status()
+            photos=sorted(r.json().get("photos",[]),
+              key=lambda p:p.get("width",0)*p.get("height",0),reverse=True)
+            for photo in photos:
+                srcs=photo.get("src") or {}
+                url=srcs.get("portrait") or srcs.get("large2x") or srcs.get("large")
+                if not url: continue
+                path=WORK/"online_background.jpg"
+                with requests.get(url,stream=True,timeout=60) as response:
+                    response.raise_for_status()
+                    with path.open("wb") as out:
+                        for chunk in response.iter_content(1024*1024):
+                            if chunk: out.write(chunk)
+                if path.stat().st_size>20000:
+                    BACKGROUND_CREDIT=f"Pexels photo by {photo.get('photographer','Pexels contributor')} (Pexels licence)"
+                    print("Using a licensed mood-matched Pexels photo.")
+                    return path
+        except (requests.RequestException, ValueError, KeyError, OSError) as exc:
+            print(f"Pexels photo search failed; trying Wikimedia Commons: {exc}")
+
+    try:
+        params={"action":"query","format":"json","generator":"search",
+          "gsrsearch":terms+" filetype:bitmap","gsrnamespace":6,"gsrlimit":15,
+          "prop":"imageinfo","iiprop":"url|extmetadata","iiurlwidth":1600}
+        r=requests.get("https://commons.wikimedia.org/w/api.php",params=params,
+          headers={"User-Agent":"PulsenamaPoetryVideo/1.0 (attribution recorded)"},timeout=30)
+        r.raise_for_status()
+        pages=(r.json().get("query") or {}).get("pages") or {}
+        candidates=[]
+        for page in pages.values():
+            info=(page.get("imageinfo") or [{}])[0]
+            meta=info.get("extmetadata") or {}
+            lic=(meta.get("LicenseShortName") or {}).get("value","")
+            if any(tag in lic.lower() for tag in ("cc0","public domain","cc by","cc-by")):
+                url=info.get("thumburl") or info.get("url")
+                if url: candidates.append((page,info,lic,url))
+        for page,info,lic,url in candidates:
+            path=WORK/"online_background.jpg"
+            with requests.get(url,stream=True,timeout=60) as response:
+                response.raise_for_status()
+                with path.open("wb") as out:
+                    for chunk in response.iter_content(1024*1024):
+                        if chunk: out.write(chunk)
+            if path.stat().st_size>20000:
+                meta=info.get("extmetadata",{})
+                artist=(meta.get("Artist") or {}).get("value","Unknown")
+                page_url="https://commons.wikimedia.org/wiki/"+page.get("title","").replace(" ","_")
+                BACKGROUND_CREDIT=f"Wikimedia Commons: {page.get('title','image')} | Creator: {artist} | Licence: {lic} | {page_url}"
+                print("Using a reusable Wikimedia Commons image; attribution recorded.")
+                return path
+    except (requests.RequestException, ValueError, KeyError, OSError) as exc:
+        print(f"Wikimedia Commons image search failed: {exc}")
+    return None
 
 def generated_background():
     """Create a fresh, original cinematic nature illustration for every run (no stock footage)."""
@@ -193,13 +281,13 @@ def text_page_png(title, lines):
     layer=Image.new("RGBA",(W,H),(0,0,0,0))
     panel=Image.new("RGBA",(W,H),(0,0,0,0))
     pd=ImageDraw.Draw(panel)
-    pd.rounded_rectangle((42,285,W-42,1000),radius=34,fill=(4,10,18,174),outline=(245,220,185,115),width=2)
+    pd.rounded_rectangle((63,428,W-63,1500),radius=34,fill=(4,10,18,174),outline=(245,220,185,115),width=2)
     panel=panel.filter(ImageFilter.GaussianBlur(0.4))
     layer=Image.alpha_composite(layer,panel)
     d=ImageDraw.Draw(layer)
     rtl=LANG.lower()=="urdu"
-    title_font=get_font(43 if rtl else 39)
-    body_font=get_font(35 if rtl else 32)
+    title_font=get_font(65 if rtl else 59)
+    body_font=get_font(53 if rtl else 48)
     try:
         kw={"direction":"rtl"} if rtl else {}
         tb=d.textbbox((0,0),title,font=title_font,**kw)
@@ -207,8 +295,8 @@ def text_page_png(title, lines):
         d.text((tx,350),title,font=title_font,fill=(255,218,160,255),stroke_width=1,stroke_fill=(0,0,0,180),**kw)
     except Exception:
         d.text((65,350),title,font=title_font,fill=(255,218,160,255))
-    y=445
-    max_width=590
+    y=665
+    max_width=885
     for line in lines[:8]:
         # Keep each original poem line intact where possible; wrap only if required.
         chunks=[]; current=""
@@ -229,8 +317,12 @@ def text_page_png(title, lines):
                 d.text((x,y),chunk,font=body_font,fill=(255,252,244,255),stroke_width=1,stroke_fill=(0,0,0,130),**kw)
             except Exception:
                 d.text((65,y),chunk,font=body_font,fill=(255,252,244,255))
-            y+=62
+            y+=143
         y+=9
+    # Small, consistent brand watermark on every generated video.
+    watermark_font=get_font(27)
+    d.text((W-285,H-92),"PULSENAMA",font=watermark_font,fill=(255,255,255,190),
+      stroke_width=2,stroke_fill=(0,0,0,150))
     path=WORK/"complete_poem_page.png"
     layer.save(path)
     return path
@@ -312,26 +404,32 @@ def make_mood_music(title, lines):
     return out
 
 def render_video(title,lines,bg,music):
-    if bg.suffix==".mp4":
-        raise RuntimeError("Stock footage is disabled; this workflow uses original generated artwork only.")
     page=text_page_png(title,lines)
-    inputs=["-loop","1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
-    base="[0:v]scale=720:1280,zoompan=z='min(zoom+0.00045,1.10)':d=1:s=720x1280:fps=24,setsar=1,fade=t=in:st=0:d=0.45[bg]"
+    if bg.suffix.lower()==".mp4":
+        inputs=["-stream_loop","-1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
+    else:
+        inputs=["-loop","1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
+    base="[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.00012,1.06)':d=1:s=1080x1920:fps=24,setsar=1,trim=duration="+str(DURATION)+",setpts=PTS-STARTPTS,fade=t=in:st=0:d=0.45[bg]"
     filters=[base,
       "[1:v]format=rgba,fade=t=in:st=0.20:d=0.55:alpha=1[poem]",
       "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,0.15,"+str(DURATION)+")'[vout]",
       "[2:a]volume=1.10,alimiter=limit=0.95,afade=t=in:st=0:d=0.18,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
     cmd=["ffmpeg","-y",*inputs,"-filter_complex",";".join(filters),
       "-map","[vout]","-map","[aout]","-t",str(DURATION),"-r",str(FPS),
-      "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p",
+      "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-s","1080x1920",
       "-c:a","aac","-b:a","160k","-movflags","+faststart",str(OUT)]
     run(cmd)
     Path("poetry_demo.txt").write_text(f"Title: {title}\nMood: {MOOD}\nLanguage: {LANG}\nDuration: {DURATION}s\n\n"+
-      "\n".join(lines)+"\n\nOriginal generated background artwork. Full poem displayed on one page. No voice-over.\n",encoding="utf-8")
+      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nFull poem displayed with watermark. No voice-over.\n",encoding="utf-8")
 
 def main():
     print(f"Generating {MOOD} / {LANG} / {DURATION}s poetry demo.")
-    title,lines=make_poem(); bg=generated_background()
+    title,lines=make_poem()
+    bg=get_pexels_video()
+    if bg is None:
+        bg=get_online_image()
+    if bg is None:
+        raise RuntimeError("No reusable internet image was found. Add PEXELS_API_KEY or retry later; no AI image will be generated.")
     music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
