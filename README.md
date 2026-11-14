@@ -1,34 +1,36 @@
-# Biz Pakistan Auto Publisher
+# Pulsenama — AI Poetry Video Creator
 
-Automated worldwide news review and publishing to Facebook through Buffer, with strong Pakistan coverage and video-first publishing when an explicitly reusable news clip is available.
+Pulsenama creates short cinematic poetry videos in Urdu, Roman Urdu, and English.
 
-## Coverage
+## What it does
 
-The feed collector searches multiple categories and regions, including breaking and world news, Pakistan, politics, business and economy, technology and AI, cricket, football and other sports, entertainment, science, health, and education. Cricket is a dedicated category; coverage is not limited to cricket or Pakistan-only stories.
+- Generates an original poem for the selected mood and language using OpenRouter, with built-in original poems as a fallback.
+- Searches for a mood-matched portrait video from Pexels first.
+- If no suitable video is available, searches for a reusable internet photo from Pexels and then Wikimedia Commons.
+- Records the photo creator/licence/source in `poetry_demo.txt` where the source provides that information.
+- Animates the background with a slow cinematic zoom, overlays the poem, and adds a Pulsenama watermark.
+- Creates an original instrumental music bed matched to the selected mood.
+- Exports a vertical 1080×1920 MP4. The GitHub Actions workflow makes the MP4 available as a downloadable artifact.
 
-The publisher reviews fresh candidates, removes duplicates, balances categories against recent posting history, and queues up to the configured per-run and daily limits. No automated news system can guarantee that every story from every publisher is captured.
+## Run it
 
-## Facebook post design
+1. Add the `OPENROUTER_API_KEY` repository secret for AI poem generation.
+2. Add `PEXELS_API_KEY` for Pexels video and photo search. Without it, the script can still try Wikimedia Commons photos, but it cannot search Pexels.
+3. Open **Actions → Pulsenama AI Poetry Video Creator → Run workflow**.
+4. Select mood, language, and duration.
+5. Download the generated MP4 from the workflow run's Artifacts section.
 
-Each Feed graphic uses a full-bleed landscape real photograph; each Story uses a vertical version of the same image-only design. The only overlay is the Biz Pakistan logo and channel name. No headline, category label, Breaking badge, slogan, dark text panel, gradients, or decorative graphics are placed over the photograph. The post caption carries a concise factual summary and relevant hashtags. Source-credit text is not added to captions.
+## Image reuse and copyright
 
-The publisher first checks video files explicitly attached to news RSS items. A video is eligible only when its feed metadata states CC0 or public-domain reuse permission and its description clearly matches the story. Eligible videos are hosted on Cloudinary and queued to Buffer as Facebook video/Reel content. If no eligible video exists, the existing licensed-photo graphic workflow is used. The system does not scrape arbitrary camera recordings or assume that a video found online is free to repost.
+Pulsenama does not download arbitrary images from random websites. It uses Pexels under its licence or Wikimedia Commons files whose returned licence metadata indicates CC0, Public Domain, or CC BY. Wikimedia creator, licence, and file-page information is recorded for attribution. Always review the source licence terms before commercial redistribution.
 
-## Image sources and reuse
+## Technical requirements
 
-- Article-provided images are used only when reuse rights are established.
-- Openverse and Wikimedia Commons candidates are filtered for licences that permit commercial reuse.
-- Pexels remains an optional source for licensed photos and requires `PEXELS_API_KEY`.
-- Add domains to `IMAGE_ALLOWED_DOMAINS` only when you have genuine permission to reuse images from those domains.
-- Do not assume that a photo or video visible on another news website is free to copy.
+- Python 3.11+
+- FFmpeg
+- Python packages: `requests`, `Pillow`
 
-## Required GitHub Actions secrets
+## Notes
 
-- OPENROUTER_API_KEY
-- BUFFER_API_KEY
-- BUFFER_CHANNEL_ID
-- CLOUDINARY_CLOUD_NAME
-- CLOUDINARY_API_KEY
-- CLOUDINARY_API_SECRET
-
-Optional: `PEXELS_API_KEY` for additional licensed photo results.
+- No AI-generated background image is used. If no reusable internet image can be found, the workflow stops with an error rather than silently using an AI-generated or unlicensed image.
+- The poetry workflow only creates a video artifact; it does not publish to social accounts.
