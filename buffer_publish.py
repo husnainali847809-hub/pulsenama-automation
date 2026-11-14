@@ -107,6 +107,9 @@ def main():
         channelId: {json.dumps(channel_id)}
         schedulingType: automatic
         mode: addToQueue
+        metadata: {{
+          facebook: {{ type: reel }}
+        }}
         assets: [{{ video: {{ url: {json.dumps(video_url)} }} }}]
       }}) {{
         ... on PostActionSuccess {{
