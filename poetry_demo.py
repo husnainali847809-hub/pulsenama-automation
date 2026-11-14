@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 W, H, FPS = 1080, 1920, 24
 KEY=os.getenv("OPENROUTER_API_KEY","").strip()
 PEXELS=os.getenv("PEXELS_API_KEY","").strip()
+PIXABAY=os.getenv("PIXABAY_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
 # Automatically choose creative settings; no workflow questions.
 MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
@@ -128,6 +129,108 @@ def get_pexels_video():
     except (requests.RequestException, ValueError, KeyError, OSError) as exc:
         print(f"Pexels video search failed; trying images: {exc}")
         return None
+
+
+def get_pixabay_video():
+    """Fetch a mood-matched, portrait Pixabay video and record its creator/source."""
+    global BACKGROUND_CREDIT
+    if not PIXABAY:
+        print("No PIXABAY_API_KEY; skipping Pixabay video search.")
+        return None
+    try:
+        r=requests.get("https://pixabay.com/api/videos/",
+          params={"key":PIXABAY,"q":mood_search_terms(),"video_type":"film",
+                  "safesearch":"true","per_page":20},timeout=30)
+        r.raise_for_status()
+        hits=r.json().get("hits",[])
+        random.shuffle(hits)
+        choices=[]
+        for hit in hits:
+            files=hit.get("videos") or {}
+            for quality in ("large","medium","small","tiny"):
+                item=files.get(quality) or {}
+                url=item.get("url")
+                vw,vh=int(item.get("width") or 0),int(item.get("height") or 0)
+                if url and vh>=600 and vh>vw:
+                    choices.append((vw*vh,hit,item))
+                    break
+        if not choices:
+            print("No suitable portrait Pixabay video found.")
+            return None
+        # Prefer the largest portrait version, while shuffling equal-sized candidates.
+        choices.sort(key=lambda x:x[0],reverse=True)
+        for _,hit,item in choices:
+            try:
+                path=WORK/"background.mp4"
+                with requests.get(item["url"],stream=True,timeout=90) as response:
+                    response.raise_for_status()
+                    with path.open("wb") as out:
+                        for chunk in response.iter_content(1024*1024):
+                            if chunk: out.write(chunk)
+                if path.stat().st_size<100000:
+                    path.unlink(missing_ok=True)
+                    continue
+                creator=hit.get("user","Pixabay contributor")
+                page=hit.get("pageURL","https://pixabay.com/videos/")
+                BACKGROUND_CREDIT=f"Pixabay video by {creator} | Pixabay Content License | {page}"
+                print(f"Using mood-matched portrait Pixabay video by {creator}.")
+                return path
+            except (requests.RequestException,OSError) as exc:
+                print(f"Pixabay video candidate failed; trying another: {exc}")
+                path.unlink(missing_ok=True)
+                continue
+    except (requests.RequestException,ValueError,KeyError) as exc:
+        print(f"Pixabay video search failed; trying other sources: {exc}")
+    return None
+
+
+def get_pixabay_image():
+    """Fetch a real, mood-matched portrait photo from Pixabay."""
+    global BACKGROUND_CREDIT
+    if not PIXABAY:
+        print("No PIXABAY_API_KEY; skipping Pixabay photo search.")
+        return None
+    try:
+        r=requests.get("https://pixabay.com/api/",
+          params={"key":PIXABAY,"q":mood_search_terms(),"image_type":"photo",
+                  "orientation":"vertical","safesearch":"true","per_page":20,
+                  "order":"popular"},timeout=30)
+        r.raise_for_status()
+        hits=r.json().get("hits",[])
+        random.shuffle(hits)
+        hits.sort(key=lambda hit:int(hit.get("imageWidth",0))*int(hit.get("imageHeight",0)),reverse=True)
+        for hit in hits:
+            url=hit.get("largeImageURL") or hit.get("webformatURL")
+            if not url: continue
+            try:
+                path=WORK/"online_background.jpg"
+                with requests.get(url,stream=True,timeout=60) as response:
+                    response.raise_for_status()
+                    if "image" not in response.headers.get("Content-Type","").lower():
+                        continue
+                    with path.open("wb") as out:
+                        for chunk in response.iter_content(1024*1024):
+                            if chunk: out.write(chunk)
+                if path.stat().st_size<20000:
+                    path.unlink(missing_ok=True)
+                    continue
+                try:
+                    with Image.open(path) as check: check.verify()
+                except Exception:
+                    path.unlink(missing_ok=True)
+                    continue
+                creator=hit.get("user","Pixabay contributor")
+                page=hit.get("pageURL","https://pixabay.com/")
+                BACKGROUND_CREDIT=f"Pixabay photo by {creator} | Pixabay Content License | {page}"
+                print(f"Using real mood-matched Pixabay photo by {creator}.")
+                return path
+            except (requests.RequestException,OSError) as exc:
+                print(f"Pixabay photo candidate failed; trying another: {exc}")
+                path.unlink(missing_ok=True)
+                continue
+    except (requests.RequestException,ValueError,KeyError) as exc:
+        print(f"Pixabay photo search failed; trying other sources: {exc}")
+    return None
 
 def get_online_image():
     """Fetch a mood-matched reusable image from Pexels or Wikimedia Commons."""
@@ -633,14 +736,20 @@ def main():
     print(f"Auto-selected: {MOOD} mood / {LANG} / {DURATION}s.")
     title,lines=make_poem()
     lines=lines[:3]
+    # Prefer real portrait video backgrounds, then fall back to real photographs.
     bg=get_pexels_video()
     if bg is None:
+        bg=get_pixabay_video()
+    if bg is None:
+        print("No suitable stock video found; trying licensed/reusable photos.")
         bg=get_online_image()
     if bg is None:
-        print("Pexels/Wikimedia did not return a usable photo; trying Unsplash.")
+        bg=get_pixabay_image()
+    if bg is None:
+        print("Pixabay/Pexels/Wikimedia did not return a usable photo; trying Unsplash.")
         bg=get_unsplash_image()
     if bg is None:
-        raise RuntimeError("No reusable internet photograph could be downloaded from Pexels, Wikimedia Commons, or Unsplash. Check GitHub Actions network access and retry; no AI image will be generated.")
+        raise RuntimeError("No usable internet photo/video could be downloaded from Pexels, Pixabay, Wikimedia Commons, or Unsplash. Check API keys/network access and retry; no AI image will be generated.")
     music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
