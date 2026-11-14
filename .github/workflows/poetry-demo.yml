@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       mood:
-        description: "Poetry mood"
+        description: "Poetry mood (also selects matching instrumental music)"
         required: true
         default: "sad"
         type: choice
-        options: [sad, romantic, motivational, deep, peaceful]
+        options: [sad, romantic, motivational, deep, peaceful, rain, memories]
       language:
         description: "Poetry language"
         required: true
