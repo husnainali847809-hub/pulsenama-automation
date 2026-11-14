@@ -574,12 +574,13 @@ def text_page_png(title, lines):
 
 
 def get_online_music():
-    """Download a mood-matched vocal song from Jamendo, favoring popular tracks."""
+    """Find a popular vocal track, widening the Jamendo search if a mood is quiet."""
     global BACKGROUND_CREDIT
     client_id=os.getenv("JAMENDO_CLIENT_ID","").strip()
     if not client_id:
         print("Missing JAMENDO_CLIENT_ID; add it as a GitHub Actions secret.")
         return None
+
     mood_tags={
       "sad":"sad emotional",
       "romantic":"romance pop",
@@ -589,55 +590,72 @@ def get_online_music():
       "rain":"sad chillout",
       "memories":"nostalgic emotional",
     }.get(MOOD,"emotional pop")
-    params={
-      "client_id":client_id,"format":"json","limit":50,
-      "fuzzytags":mood_tags.replace(" ","+"),
+
+    # Jamendo's tracks endpoint returns album tracks only by default.
+    # Explicitly include singles too, and widen the search before giving up.
+    common={
+      "client_id":client_id,"format":"json","limit":100,
+      "type":"single albumtrack",
       "vocalinstrumental":"vocal",
-      "durationbetween":f"35_{max(240,DURATION+30)}",
       "audioformat":"mp32","audiodlformat":"mp32",
-      "boost":"popularity_week","include":"musicinfo",
-      "groupby":"artist_id",
+      "boost":"popularity_week",
     }
+    searches=[
+      {"fuzzytags":mood_tags.replace(" ","+"),"durationbetween":"35_600"},
+      {"fuzzytags":mood_tags.replace(" ","+")},
+      {"durationbetween":"35_600"},
+      {},
+    ]
+
+    seen=set()
     try:
-        r=requests.get("https://api.jamendo.com/v3.0/tracks/",params=params,timeout=35)
-        r.raise_for_status()
-        payload=r.json()
-        if (payload.get("headers") or {}).get("status")!="success":
-            raise RuntimeError((payload.get("headers") or {}).get("error_message","Jamendo API error"))
-        tracks=payload.get("results") or []
-        random.shuffle(tracks)
-        # Prefer popular vocal tracks; skip entries that do not allow downloads.
-        candidates=[t for t in tracks if t.get("audiodownload_allowed") and t.get("audiodownload")]
-        if not candidates:
-            candidates=[t for t in tracks if t.get("audio")]
-        for track in candidates:
-            url=track.get("audiodownload") or track.get("audio")
-            if not url: continue
-            try:
+        for index,extra in enumerate(searches,1):
+            params={**common,**extra}
+            response=requests.get("https://api.jamendo.com/v3.0/tracks/",params=params,timeout=40)
+            response.raise_for_status()
+            payload=response.json()
+            headers=payload.get("headers") or {}
+            if headers.get("status")!="success":
+                raise RuntimeError(headers.get("error_message") or "Jamendo API error")
+            tracks=payload.get("results") or []
+            print(f"Jamendo vocal search {index}: {len(tracks)} tracks returned.")
+            for track in tracks:
+                track_id=str(track.get("id",""))
+                if not track_id or track_id in seen:
+                    continue
+                seen.add(track_id)
+                allowed=track.get("audiodownload_allowed")
+                can_download=(allowed is True or str(allowed).lower() in ("1","true")) and bool(track.get("audiodownload"))
+                if not can_download:
+                    continue
                 path=WORK/"jamendo_vocal_song.mp3"
-                with requests.get(url,stream=True,timeout=90) as response:
-                    response.raise_for_status()
-                    with path.open("wb") as out:
-                        for chunk in response.iter_content(256*1024):
-                            if chunk: out.write(chunk)
-                if path.stat().st_size<50000:
+                try:
+                    with requests.get(track["audiodownload"],stream=True,timeout=90) as download:
+                        download.raise_for_status()
+                        with path.open("wb") as out:
+                            for chunk in download.iter_content(256*1024):
+                                if chunk:
+                                    out.write(chunk)
+                    if path.stat().st_size<50000:
+                        path.unlink(missing_ok=True)
+                        continue
+                    probe=subprocess.run(
+                      ["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
+                      stdout=subprocess.DEVNULL,stderr=subprocess.PIPE
+                    )
+                    if probe.returncode!=0:
+                        path.unlink(missing_ok=True)
+                        continue
+                    title=track.get("name","Jamendo song")
+                    artist=track.get("artist_name","Jamendo artist")
+                    page=f"https://www.jamendo.com/track/{track_id}"
+                    BACKGROUND_CREDIT += f"\\nSong: {title} — {artist} | Jamendo: {page}"
+                    print(f"Using a popular vocal song from Jamendo: {title} — {artist}.")
+                    return path
+                except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
+                    print(f"Jamendo track download failed; trying the next vocal track: {exc}")
                     path.unlink(missing_ok=True)
-                    continue
-                probe=subprocess.run(["ffmpeg","-v","error","-i",str(path),"-t","2","-f","null","-"],
-                  stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-                if probe.returncode!=0:
-                    path.unlink(missing_ok=True)
-                    continue
-                title=track.get("name","Jamendo song")
-                artist=track.get("artist_name","Jamendo artist")
-                page=f"https://www.jamendo.com/track/{track.get('id','')}"
-                BACKGROUND_CREDIT += f"\\nSong: {title} — {artist} | Jamendo: {page}"
-                print(f"Using a popular mood-matched vocal song from Jamendo: {title} — {artist}.")
-                return path
-            except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
-                print(f"Jamendo song candidate failed; trying another: {exc}")
-                path.unlink(missing_ok=True)
-        print("Jamendo returned no downloadable vocal tracks for this mood.")
+        print("Jamendo found no downloadable vocal tracks after four progressively broader searches.")
     except (requests.RequestException,ValueError,KeyError,RuntimeError) as exc:
         print(f"Jamendo vocal-song search failed: {exc}")
     return None
