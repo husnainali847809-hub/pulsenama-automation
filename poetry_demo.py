@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Standalone, manual-only cinematic poetry demo. Never publishes to Buffer."""
 import json, os, re, subprocess, sys, math, random, wave, struct
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import requests
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -12,7 +14,18 @@ PIXABAY=os.getenv("PIXABAY_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
 # Automatically choose creative settings; no workflow questions.
 MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
-LANG=random.choice(["English","Urdu"])
+# Fixed daily language rotation for the four Pakistan-time publishing slots:
+# 09:00 Urdu, 13:00 English, 17:00 Urdu, 21:00 English.
+# This prevents all four videos from randomly ending up in the same language.
+def scheduled_language():
+    if os.getenv("GITHUB_EVENT_NAME") == "schedule":
+        hour=datetime.now(ZoneInfo("Asia/Karachi")).hour
+        slots=[9,13,17,21]
+        nearest=min(range(len(slots)),key=lambda i: min(abs(hour-slots[i]),24-abs(hour-slots[i])))
+        return ["Urdu","English","Urdu","English"][nearest]
+    return random.choice(["Urdu","English"])
+
+LANG=scheduled_language()
 DURATION=random.choice([18,20,22,24])
 OUT,WORK=Path("poetry_demo.mp4"),Path("poetry_demo_work")
 WORK.mkdir(exist_ok=True)
