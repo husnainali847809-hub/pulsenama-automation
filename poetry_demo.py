@@ -64,7 +64,10 @@ Exactly 6 concise lines, natural language, emotionally meaningful, no famous or 
             print(f"OpenRouter returned no poem text ({reason}); switching to fallback.")
             return fallback_poem()
         raw=content.strip()
-        raw=re.sub(r"^\\s*[\\x60]{3}(?:json)?\\s*|\\s*[\\x60]{3}\\s*$","",raw,flags=re.I)
+        if raw.startswith("```"):
+            raw=re.sub(r"^```(?:json)?\\s*","",raw,flags=re.I)
+        if raw.endswith("```"):
+            raw=raw[:-3].strip()
         data=json.loads(raw)
         lines=[str(x).strip() for x in data.get("lines",[]) if str(x).strip()]
         if len(lines)<4:
