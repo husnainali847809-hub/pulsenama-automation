@@ -43,7 +43,14 @@ jobs:
         id: video-host
         env:
           GH_TOKEN: ${{ github.token }}
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
         run: |
+          if [ -z "$BUFFER_API_KEY" ] || [ -z "$BUFFER_CHANNEL_ID" ]; then
+            echo "Buffer secrets are not configured; skipping public video hosting."
+            echo "video_url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           TAG="pulsenama-video-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$TAG" poetry_demo.mp4 --repo "$GITHUB_REPOSITORY" --title "Pulsenama video $TAG" --notes "Generated poetry video for Buffer scheduling."
           echo "video_url=https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/poetry_demo.mp4" >> "$GITHUB_OUTPUT"
