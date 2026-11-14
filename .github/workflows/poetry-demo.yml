@@ -10,7 +10,7 @@ on:
     - cron: "0 16 * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   poetry-video:
@@ -39,6 +39,20 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
         run: python poetry_demo.py
+      - name: Host video publicly for Buffer
+        id: video-host
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pulsenama-video-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$TAG" poetry_demo.mp4 --repo "$GITHUB_REPOSITORY" --title "Pulsenama video $TAG" --notes "Generated poetry video for Buffer scheduling."
+          echo "video_url=https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/poetry_demo.mp4" >> "$GITHUB_OUTPUT"
+      - name: Add video to Buffer queue
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
+          BUFFER_VIDEO_URL: ${{ steps.video-host.outputs.video_url }}
+        run: python buffer_publish.py
       - name: Upload MP4 and attribution note
         uses: actions/upload-artifact@v4
         with:
