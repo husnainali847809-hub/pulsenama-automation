@@ -331,6 +331,72 @@ def text_page_png(title, lines):
     layer.save(path)
     return path
 
+
+def get_online_music():
+    """Find a reusable instrumental audio track on Wikimedia Commons.
+    Only accept public-domain/CC0/CC-BY tracks and record creator/licence."""
+    global BACKGROUND_CREDIT
+    terms = {
+      "sad":"ambient piano instrumental melancholic music",
+      "romantic":"romantic piano instrumental music",
+      "motivational":"uplifting instrumental orchestral music",
+      "deep":"ambient cinematic instrumental music",
+      "peaceful":"calm piano ambient instrumental music",
+      "rain":"soft piano ambient instrumental music",
+      "memories":"nostalgic piano instrumental music",
+    }.get(MOOD, "cinematic ambient instrumental music")
+    try:
+        params={"action":"query","format":"json","generator":"search",
+          "gsrsearch":terms,"gsrnamespace":6,"gsrlimit":30,
+          "prop":"imageinfo","iiprop":"url|mime|extmetadata"}
+        r=requests.get("https://commons.wikimedia.org/w/api.php",params=params,
+          headers={"User-Agent":"PulsenamaPoetryVideo/1.0 (music attribution recorded)"},timeout=30)
+        r.raise_for_status()
+        pages=list(((r.json().get("query") or {}).get("pages") or {}).values())
+        candidates=[]
+        for page in pages:
+            info=(page.get("imageinfo") or [{}])[0]
+            mime=(info.get("mime") or "").lower()
+            meta=info.get("extmetadata") or {}
+            lic=(meta.get("LicenseShortName") or {}).get("value","")
+            lic_low=lic.lower()
+            if not mime.startswith("audio/"): continue
+            if not any(tag in lic_low for tag in ("cc0","public domain","cc by")): continue
+            url=info.get("url")
+            if url: candidates.append((page,info,lic,url))
+        random.shuffle(candidates)
+        for page,info,lic,url in candidates:
+            try:
+                ext=Path(url.split("?")[0]).suffix.lower()
+                if ext not in (".ogg",".oga",".mp3",".wav",".flac",".m4a"): continue
+                path=WORK/("licensed_music"+ext)
+                with requests.get(url,stream=True,timeout=90,
+                  headers={"User-Agent":"PulsenamaPoetryVideo/1.0","Referer":"https://commons.wikimedia.org/"}) as response:
+                    response.raise_for_status()
+                    with path.open("wb") as out:
+                        for chunk in response.iter_content(256*1024):
+                            if chunk: out.write(chunk)
+                if path.stat().st_size < 30000:
+                    path.unlink(missing_ok=True); continue
+                # Confirm FFmpeg can decode it before accepting the candidate.
+                probe=subprocess.run(["ffmpeg","-v","error","-i",str(path),"-t","1","-f","null","-"],
+                  stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+                if probe.returncode != 0:
+                    path.unlink(missing_ok=True); continue
+                meta=info.get("extmetadata") or {}
+                artist=(meta.get("Artist") or {}).get("value","Unknown creator")
+                title=page.get("title","Audio track")
+                page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
+                BACKGROUND_CREDIT += f"\nMusic: Wikimedia Commons {title} | Creator: {artist} | Licence: {lic} | {page_url}"
+                print(f"Using licensed online instrumental candidate: {title} ({lic}).")
+                return path
+            except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
+                print(f"Audio candidate unavailable; trying another: {exc}")
+                continue
+    except (requests.RequestException,ValueError,KeyError,OSError) as exc:
+        print(f"Commons music search unavailable; creating a fresh original instrumental: {exc}")
+    return None
+
 def make_mood_music(title, lines):
     """Create an original, royalty-free instrumental bed matched to the poem mood.
     No voice, speech, or text-to-speech is used."""
@@ -345,14 +411,20 @@ def make_mood_music(title, lines):
     }
     mood = MOOD if MOOD in profiles else "peaceful"
     p = profiles[mood]
-    seed_text = title + "|" + "|".join(lines) + "|" + mood
-    rng = random.Random(sum((i+1)*ord(c) for i,c in enumerate(seed_text)))
+    # New arrangement every run: vary tempo, key, chord order and melodic phrasing.
+    rng = random.Random()
     sample_rate = 22050
     total = int(DURATION * sample_rate)
-    beat = 60.0 / p["bpm"]
+    bpm = max(56, min(112, p["bpm"] + rng.randint(-7, 7)))
+    beat = 60.0 / bpm
     bar = beat * 4
-    root = 48 if mood in ("sad","deep","rain","memories") else 50
-    progression = p["progression"]
+    root = (48 if mood in ("sad","deep","rain","memories") else 50) + rng.choice([-2,0,2,3])
+    progression = list(p["progression"])
+    shift = rng.randrange(len(progression))
+    progression = progression[shift:] + progression[:shift]
+    if rng.random() < 0.5:
+        progression = list(reversed(progression))
+    melody_style = rng.choice(["soft_piano","bell_piano","warm_keys"])
     scale = p["scale"]
     melody = []
     for bar_i in range(int(math.ceil(DURATION / bar)) + 1):
@@ -387,7 +459,8 @@ def make_mood_music(title, lines):
                 if 0 <= age < 1.8:
                     freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
                     env = math.exp(-age * (2.8 if mood == "motivational" else 2.0))
-                    pluck += (math.sin(2*math.pi*freq*age) + 0.24*math.sin(2*math.pi*freq*2.01*age)) * 0.22 * env
+                    overtone = 0.38 if melody_style == "bell_piano" else (0.16 if melody_style == "warm_keys" else 0.24)
+                    pluck += (math.sin(2*math.pi*freq*age) + overtone*math.sin(2*math.pi*freq*2.01*age)) * (0.19 if melody_style == "warm_keys" else 0.22) * env
             # A very soft pulse gives uplifting moods movement without overpowering the poem.
             pulse = 0.0
             if mood == "motivational":
@@ -411,14 +484,20 @@ def make_mood_music(title, lines):
 def render_video(title,lines,bg,music):
     page=text_page_png(title,lines)
     if bg.suffix.lower()==".mp4":
-        inputs=["-stream_loop","-1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
+        inputs=["-stream_loop","-1","-i",str(bg),"-loop","1","-i",str(page)]
     else:
-        inputs=["-loop","1","-i",str(bg),"-loop","1","-i",str(page),"-i",str(music)]
-    base="[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.00012,1.06)':d=1:s=1080x1920:fps=24,setsar=1,trim=duration="+str(DURATION)+",setpts=PTS-STARTPTS,fade=t=in:st=0:d=0.45[bg]"
+        inputs=["-loop","1","-i",str(bg),"-loop","1","-i",str(page)]
+    # Loop downloaded music if shorter than the video; generated WAV already matches duration.
+    if music.suffix.lower() != ".wav":
+        inputs += ["-stream_loop","-1","-i",str(music)]
+    else:
+        inputs += ["-i",str(music)]
+    # A deliberate black opening, then a slow cinematic reveal of the photograph.
+    base="[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.00012,1.06)':d=1:s=1080x1920:fps=24,setsar=1,trim=duration="+str(DURATION)+",setpts=PTS-STARTPTS,fade=t=in:st=0.75:d=1.15[bg]"
     filters=[base,
-      "[1:v]format=rgba,fade=t=in:st=0.20:d=0.55:alpha=1[poem]",
-      "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,0.15,"+str(DURATION)+")'[vout]",
-      "[2:a]volume=1.65,loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=0.98,afade=t=in:st=0:d=0.20,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
+      "[1:v]format=rgba,fade=t=in:st=1.35:d=0.65:alpha=1[poem]",
+      "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,1.30,"+str(DURATION)+")'[vout]",
+      "[2:a]volume=1.25,loudnorm=I=-16:TP=-1.5:LRA=9,alimiter=limit=0.96,afade=t=in:st=0:d=1.25,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
     cmd=["ffmpeg","-y",*inputs,"-filter_complex",";".join(filters),
       "-map","[vout]","-map","[aout]","-t",str(DURATION),"-r",str(FPS),
       "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-s","1080x1920",
@@ -436,7 +515,9 @@ def main():
         bg=get_online_image()
     if bg is None:
         raise RuntimeError("No reusable internet image was found. Add PEXELS_API_KEY or retry later; no AI image will be generated.")
-    music=make_mood_music(title,lines)
+    music=get_online_music()
+    if music is None:
+        music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
