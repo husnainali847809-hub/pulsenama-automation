@@ -625,7 +625,7 @@ def get_online_music():
                 meta=info.get("extmetadata") or {}
                 artist=(meta.get("Artist") or {}).get("value","Unknown singer")
                 page_url="https://commons.wikimedia.org/wiki/"+title.replace(" ","_")
-                BACKGROUND_CREDIT += f"\\nSong: {title} | Singer/creator: {artist} | {page_url}"
+                BACKGROUND_CREDIT += f"\nSong: {title} | Singer/creator: {artist} | {page_url}"
                 print(f"Using a mood-matched song with vocals: {title}.")
                 return path
             except (requests.RequestException,OSError,subprocess.SubprocessError) as exc:
