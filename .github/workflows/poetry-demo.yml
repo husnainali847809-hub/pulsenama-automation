@@ -2,25 +2,6 @@ name: Pulsenama AI Poetry Video Creator
 
 on:
   workflow_dispatch:
-    inputs:
-      mood:
-        description: "Poetry mood and matching background"
-        required: true
-        default: "sad"
-        type: choice
-        options: [sad, romantic, motivational, deep, peaceful, rain, memories]
-      language:
-        description: "Poetry language"
-        required: true
-        default: "Urdu"
-        type: choice
-        options: [Urdu, Roman Urdu, English]
-      duration:
-        description: "Video duration in seconds"
-        required: true
-        default: "24"
-        type: choice
-        options: ["15", "20", "24", "30", "35"]
 
 permissions:
   contents: read
@@ -49,9 +30,6 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: openrouter/free
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          POETRY_MOOD: ${{ inputs.mood }}
-          POETRY_LANGUAGE: ${{ inputs.language }}
-          POETRY_DURATION: ${{ inputs.duration }}
         run: python poetry_demo.py
       - name: Upload MP4 and attribution note
         uses: actions/upload-artifact@v4
