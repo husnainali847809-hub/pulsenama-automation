@@ -813,7 +813,7 @@ def render_video(title,lines,bg,music):
       "-c:a","aac","-b:a","160k","-movflags","+faststart",str(OUT)]
     run(cmd)
     Path("poetry_demo.txt").write_text(f"Title: {title}\nMood: {MOOD}\nLanguage: {LANG}\nDuration: {DURATION}s\n\n"+
-      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nShort 2–3 line poetry displayed directly on background; no text box or watermark. Mood-matched vocal song from Jamendo.\n",encoding="utf-8")
+      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nShort 2–3 line poetry displayed directly on background; no text box or watermark. Vocal song when available; otherwise original mood-matched instrumental.\n",encoding="utf-8")
 
 def main():
     print(f"Auto-selected: {MOOD} mood / {LANG} / {DURATION}s.")
