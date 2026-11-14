@@ -65,7 +65,7 @@ Exactly 6 concise lines, natural language, emotionally meaningful, no famous or 
             return fallback_poem()
         raw=content.strip()
         if raw.startswith("```"):
-            raw=re.sub(r"^```(?:json)?\\s*","",raw,flags=re.I)
+            raw=raw.split("\\n",1)[1] if "\\n" in raw else raw[3:]
         if raw.endswith("```"):
             raw=raw[:-3].strip()
         data=json.loads(raw)
