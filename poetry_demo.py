@@ -826,7 +826,8 @@ def main():
         raise RuntimeError("No usable internet photo/video could be downloaded from Pexels, Pixabay, Wikimedia Commons, or Unsplash. Check API keys/network access and retry; no AI image will be generated.")
     music=get_online_music()
     if music is None:
-        raise RuntimeError("No downloadable vocal song was found. Add a valid JAMENDO_CLIENT_ID GitHub Actions secret and retry; instrumental-only music is disabled.")
+        target = "English" if LANG == "English" else "Pakistani/Indian"
+        raise RuntimeError(f"No downloadable {target} vocal song was found in Jamendo; no unrelated-language song or instrumental will be substituted.")
     render_video(title,lines,bg,music)
     print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
 
