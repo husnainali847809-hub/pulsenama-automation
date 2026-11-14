@@ -9,9 +9,10 @@ W, H, FPS = 1080, 1920, 24
 KEY=os.getenv("OPENROUTER_API_KEY","").strip()
 PEXELS=os.getenv("PEXELS_API_KEY","").strip()
 MODEL=os.getenv("OPENROUTER_MODEL","openrouter/free")
-MOOD=os.getenv("POETRY_MOOD","sad").lower()
-LANG=os.getenv("POETRY_LANGUAGE","Urdu")
-DURATION=max(15,min(35,int(os.getenv("POETRY_DURATION","24"))))
+# Automatically choose creative settings; no workflow questions.
+MOOD=random.choice(["sad","romantic","motivational","deep","peaceful","rain","memories"])
+LANG="Urdu"
+DURATION=random.choice([18,20,22,24])
 OUT,WORK=Path("poetry_demo.mp4"),Path("poetry_demo_work")
 WORK.mkdir(exist_ok=True)
 
@@ -21,19 +22,19 @@ def fallback_poem():
     """Original local fallback so a temporary AI/API response issue does not stop the demo."""
     poems = {
       "Urdu": {
-        "sad": ("خاموش رات", ["بارش کی بوندیں کچھ کہتی ہیں", "خاموش گلی میں یادیں رہتی ہیں", "چراغ جلتا ہے تنہائی کے ساتھ", "دل ڈھونڈتا ہے گزری ہوئی بات", "صبح آئے گی، یہ یقین رہے", "ہر اندھیرے کے بعد روشنی رہے"]),
-        "deep": ("خاموش سوال", ["ستاروں سے اک سوال کیا", "خاموشی نے جواب دیا", "جو راستے دل سے نکلتے ہیں", "وہ منزلوں تک پہنچتے ہیں", "وقت ہر راز کھولتا ہے", "صبر نیا حوصلہ دیتا ہے"]),
-        "peaceful": ("سکون کا لمحہ", ["ہوا آہستہ گنگناتی ہے", "جھیل چپکے سے مسکراتی ہے", "فکر کے بادل دور ہوئے", "دل کے موسم روشن ہوئے", "یہ لمحہ بس ٹھہر جائے", "روح کو تھوڑا سکون مل جائے"]),
+        "sad": ("خاموش رات", ["بارش میں تیری یاد آئی، دل پھر خاموش ہو گیا", "جو خواب کبھی اپنا تھا، آج دھند میں کھو گیا"]),
+        "deep": ("خاموش سوال", ["خاموشی بھی کبھی دل کی صدا بن جاتی ہے", "جو بات کہہ نہ سکیں، وہ دعا بن جاتی ہے"]),
+        "peaceful": ("سکون کا لمحہ", ["ہوا کے ساتھ کچھ خواب بہنے دو", "آج دل کو ذرا سکون سے رہنے دو"]),
       },
       "Roman Urdu": {
-        "sad": ("Khamosh Raat", ["Barish ki boondein kuch kehti hain", "Khamosh gali mein yaadein rehti hain", "Chiragh jalta hai tanhai ke saath", "Dil dhoondta hai guzri hui baat", "Subah aaye gi, ye yaqeen rahe", "Har andhere ke baad roshni rahe"]),
-        "deep": ("Khamosh Sawal", ["Sitaron se aik sawal kiya", "Khamoshi ne jawab diya", "Jo raste dil se nikalte hain", "Woh manzilon tak pohanchte hain", "Waqt har raaz kholta hai", "Sabr naya hosla deta hai"]),
-        "peaceful": ("Sukoon Ka Lamha", ["Hawa aahista gungunati hai", "Jheel chupke se muskurati hai", "Fikr ke badal door huay", "Dil ke mausam roshan huay", "Ye lamha bas thehar jaye", "Rooh ko thora sukoon mil jaye"]),
+        "sad": ("Khamosh Raat", ["Barish mein teri yaad phir laut aayi", "Khamosh dil ne bas teri sada lagayi"]),
+        "deep": ("Khamosh Sawal", ["Khamoshi mein bhi ek awaaz hoti hai", "Har raat ke baad nayi subah hoti hai"]),
+        "peaceful": ("Sukoon Ka Lamha", ["Hawa se keh do zara dheere chale", "Aaj dil ko apne khayalon mein rehne de"]),
       },
       "English": {
-        "sad": ("After the Rain", ["The quiet streets remember rain", "Soft lights glow through windowpanes", "Some distant moments gently stay", "Then slowly drift and fade away", "A new dawn waits beyond the blue", "And brings a little hope anew"]),
-        "deep": ("Quiet Questions", ["The stars keep secrets of the night", "The silence holds a softer light", "Each road can teach the heart to grow", "Each passing hour has more to show", "Be patient with the things unseen", "Tomorrow brings a space between"]),
-        "peaceful": ("A Gentle Moment", ["The lake is calm beneath the sky", "A silver cloud goes drifting by", "The breeze moves softly through the trees", "The world slows down with every breeze", "Let this small moment softly stay", "And carry all the noise away"]),
+        "sad": ("After the Rain", ["Some memories still whisper in the rain", "Some goodbyes keep echoing again"]),
+        "deep": ("Quiet Questions", ["The quiet holds what words cannot say", "Even the darkest night gives way"]),
+        "peaceful": ("A Gentle Moment", ["Let the world grow quiet for a while", "And let your tired heart learn to smile"]),
       }
     }
     lang = LANG if LANG in poems else "English"
@@ -46,8 +47,8 @@ def make_poem():
     if not KEY:
         raise RuntimeError("Missing OPENROUTER_API_KEY GitHub secret.")
     prompt=f"""Write a completely original short {LANG} poem for a {MOOD} cinematic vertical video.
-Return ONLY valid JSON: {{"title":"short title","lines":["line 1","line 2","line 3","line 4","line 5","line 6"]}}.
-Exactly 6 concise lines, natural language, emotionally meaningful, no famous or copyrighted poetry, no quotes, no emojis, no explanation."""
+Return ONLY valid JSON: {{"title":"short title","lines":["short poetic line 1","short poetic line 2"]}}.
+Write only 2 or 3 short lines total (never more than 3), natural and emotionally powerful. No famous or copyrighted poetry, quotes, emojis or explanation."""
     try:
         r=requests.post("https://openrouter.ai/api/v1/chat/completions",
           headers={"Authorization":f"Bearer {KEY}","Content-Type":"application/json"},
@@ -70,10 +71,10 @@ Exactly 6 concise lines, natural language, emotionally meaningful, no famous or 
             raw=raw[:-3].strip()
         data=json.loads(raw)
         lines=[str(x).strip() for x in data.get("lines",[]) if str(x).strip()]
-        if len(lines)<4:
+        if len(lines)<2:
             print("OpenRouter returned fewer than four lines; switching to fallback.")
             return fallback_poem()
-        return str(data.get("title") or "A quiet moment")[:80],lines[:6]
+        return str(data.get("title") or "")[:80],lines[:3]
     except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
         print(f"OpenRouter poem request failed ({exc}); switching to fallback.")
         return fallback_poem()
@@ -303,49 +304,30 @@ def get_font(size):
     return ImageFont.load_default()
 
 def text_page_png(title, lines):
-    """Render the complete poem/quote on one elegant, readable page."""
+    """Place 2–3 short poetry lines directly over the background, without a box."""
     layer=Image.new("RGBA",(W,H),(0,0,0,0))
-    panel=Image.new("RGBA",(W,H),(0,0,0,0))
-    pd=ImageDraw.Draw(panel)
-    pd.rounded_rectangle((63,428,W-63,1500),radius=34,fill=(4,10,18,174),outline=(245,220,185,115),width=2)
-    panel=panel.filter(ImageFilter.GaussianBlur(0.4))
-    layer=Image.alpha_composite(layer,panel)
     d=ImageDraw.Draw(layer)
     rtl=LANG.lower()=="urdu"
-    title_font=get_font(65 if rtl else 59)
-    body_font=get_font(53 if rtl else 48)
-    try:
+    font=get_font(76 if rtl else 70)
+    visible=[str(line).strip() for line in lines[:3] if str(line).strip()]
+    gap=42
+    heights=[]
+    for line in visible:
+        try: box=d.textbbox((0,0),line,font=font,direction="rtl" if rtl else None)
+        except Exception: box=d.textbbox((0,0),line,font=font)
+        heights.append(max(80,box[3]-box[1]))
+    y=int(H*0.54-(sum(heights)+gap*max(0,len(heights)-1))/2)
+    for line,height in zip(visible,heights):
         kw={"direction":"rtl"} if rtl else {}
-        tb=d.textbbox((0,0),title,font=title_font,**kw)
-        tx=(W-(tb[2]-tb[0]))//2
-        d.text((tx,350),title,font=title_font,fill=(255,218,160,255),stroke_width=1,stroke_fill=(0,0,0,180),**kw)
-    except Exception:
-        d.text((65,350),title,font=title_font,fill=(255,218,160,255))
-    y=665
-    max_width=885
-    for line in lines[:8]:
-        # Keep each original poem line intact where possible; wrap only if required.
-        chunks=[]; current=""
-        for word in str(line).split():
-            candidate=(current+" "+word).strip()
-            try: width=d.textlength(candidate,font=body_font,direction="rtl" if rtl else None)
-            except Exception: width=d.textlength(candidate,font=body_font)
-            if width>max_width and current:
-                chunks.append(current); current=word
-            else: current=candidate
-        if current: chunks.append(current)
-        for chunk in chunks:
-            try:
-                kw={"direction":"rtl"} if rtl else {}
-                box=d.textbbox((0,0),chunk,font=body_font,**kw)
-                x=(W-(box[2]-box[0]))//2
-                d.text((x+2,y+3),chunk,font=body_font,fill=(0,0,0,220),stroke_width=2,stroke_fill=(0,0,0,170),**kw)
-                d.text((x,y),chunk,font=body_font,fill=(255,252,244,255),stroke_width=1,stroke_fill=(0,0,0,130),**kw)
-            except Exception:
-                d.text((65,y),chunk,font=body_font,fill=(255,252,244,255))
-            y+=143
-        y+=9
-    path=WORK/"complete_poem_page.png"
+        try:
+            box=d.textbbox((0,0),line,font=font,**kw)
+            x=(W-(box[2]-box[0]))//2
+            d.text((x+4,y+5),line,font=font,fill=(0,0,0,210),stroke_width=8,stroke_fill=(0,0,0,150),**kw)
+            d.text((x,y),line,font=font,fill=(255,250,239,255),stroke_width=2,stroke_fill=(35,22,24,235),**kw)
+        except Exception:
+            d.text((75,y),line,font=font,fill=(255,250,239,255),stroke_width=3,stroke_fill=(0,0,0,220))
+        y+=height+gap
+    path=WORK/"poetry_overlay.png"
     layer.save(path)
     return path
 
@@ -395,8 +377,9 @@ def make_mood_music(title, lines):
             pad = 0.0
             for j, midi in enumerate(chord_notes):
                 freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
-                pad += math.sin(2 * math.pi * freq * t + j * 0.17) * (0.075 if j == 0 else 0.052)
-                pad += math.sin(2 * math.pi * (freq * 2.003) * t + j) * 0.008
+                pad += math.sin(2 * math.pi * freq * t + j * 0.17) * (0.105 if j == 0 else 0.078)
+                pad += math.sin(2 * math.pi * (freq * 2.003) * t + j) * 0.018
+                pad += math.sin(2 * math.pi * (freq * 3.01) * t + j * 0.4) * 0.007
             # Gentle piano-like plucks, with notes chosen from the mood's scale.
             pluck = 0.0
             for onset, midi in melody:
@@ -404,7 +387,7 @@ def make_mood_music(title, lines):
                 if 0 <= age < 1.8:
                     freq = 440.0 * (2.0 ** ((midi - 69) / 12.0))
                     env = math.exp(-age * (2.8 if mood == "motivational" else 2.0))
-                    pluck += (math.sin(2*math.pi*freq*age) + 0.24*math.sin(2*math.pi*freq*2.01*age)) * 0.13 * env
+                    pluck += (math.sin(2*math.pi*freq*age) + 0.24*math.sin(2*math.pi*freq*2.01*age)) * 0.22 * env
             # A very soft pulse gives uplifting moods movement without overpowering the poem.
             pulse = 0.0
             if mood == "motivational":
@@ -412,7 +395,7 @@ def make_mood_music(title, lines):
             sample = max(-0.85, min(0.85, pad + pluck + pulse))
             fade_in = min(1.0, t / 0.16)
             fade_out = min(1.0, max(0.0, (DURATION - t) / 2.2))
-            sample *= fade_in * fade_out * 0.90
+            sample *= fade_in * fade_out * 1.65
             # Slight stereo width; both channels remain fully instrumental.
             left = int(max(-1.0, min(1.0, sample * 0.96)) * 32767)
             right = int(max(-1.0, min(1.0, sample * 1.04)) * 32767)
@@ -435,18 +418,19 @@ def render_video(title,lines,bg,music):
     filters=[base,
       "[1:v]format=rgba,fade=t=in:st=0.20:d=0.55:alpha=1[poem]",
       "[bg][poem]overlay=(W-w)/2:(H-h)/2:enable='between(t,0.15,"+str(DURATION)+")'[vout]",
-      "[2:a]volume=1.10,alimiter=limit=0.95,afade=t=in:st=0:d=0.18,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
+      "[2:a]volume=1.65,loudnorm=I=-14:TP=-1.0:LRA=7,alimiter=limit=0.98,afade=t=in:st=0:d=0.20,afade=t=out:st="+str(max(0,DURATION-3))+":d=3[aout]"]
     cmd=["ffmpeg","-y",*inputs,"-filter_complex",";".join(filters),
       "-map","[vout]","-map","[aout]","-t",str(DURATION),"-r",str(FPS),
       "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-s","1080x1920",
       "-c:a","aac","-b:a","160k","-movflags","+faststart",str(OUT)]
     run(cmd)
     Path("poetry_demo.txt").write_text(f"Title: {title}\nMood: {MOOD}\nLanguage: {LANG}\nDuration: {DURATION}s\n\n"+
-      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nFull poem displayed with watermark. No voice-over.\n",encoding="utf-8")
+      "\n".join(lines)+"\n\nBackground: "+BACKGROUND_CREDIT+"\nShort 2–3 line poetry displayed directly on background; no text box or watermark. Original instrumental music.\n",encoding="utf-8")
 
 def main():
-    print(f"Generating {MOOD} / {LANG} / {DURATION}s poetry demo.")
+    print(f"Auto-selected: {MOOD} mood / {LANG} / {DURATION}s.")
     title,lines=make_poem()
+    lines=lines[:3]
     bg=get_pexels_video()
     if bg is None:
         bg=get_online_image()
