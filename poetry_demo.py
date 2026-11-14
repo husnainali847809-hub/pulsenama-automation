@@ -573,6 +573,15 @@ def text_page_png(title, lines):
     return path
 
 
+
+def get_google_drive_music():
+    """Reserved hook for the Google Drive song library; integration will be completed later."""
+    # Keep this function in the music pipeline so a Drive folder can be connected
+    # without changing the video-generation flow. No Drive URL or credentials
+    # are currently configured in this repository.
+    print("Google Drive song library is not connected yet; continuing to the existing song source.")
+    return None
+
 def get_online_music():
     """Choose vocals by poem language: English tracks for English, PAK/IND artists for Urdu."""
     global BACKGROUND_CREDIT
@@ -824,12 +833,15 @@ def main():
         bg=get_unsplash_image()
     if bg is None:
         raise RuntimeError("No usable internet photo/video could be downloaded from Pexels, Pixabay, Wikimedia Commons, or Unsplash. Check API keys/network access and retry; no AI image will be generated.")
-    music=get_online_music()
+    # Prefer a future Google Drive song library, then existing language-matched vocals.
+    music=get_google_drive_music()
     if music is None:
-        target = "English" if LANG == "English" else "Pakistani/Indian"
-        raise RuntimeError(f"No downloadable {target} vocal song was found in Jamendo; no unrelated-language song or instrumental will be substituted.")
+        music=get_online_music()
+    if music is None:
+        print("No suitable vocal song was available; using the system's mood-matched instrumental soundtrack.")
+        music=make_mood_music(title,lines)
     render_video(title,lines,bg,music)
-    print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). No social post was created.")
+    print(f"SUCCESS: {OUT} ({OUT.stat().st_size} bytes). Video generation completed.")
 
 if __name__=="__main__":
     try: main()
