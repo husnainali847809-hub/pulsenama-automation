@@ -33,11 +33,11 @@ def main():
     query = f"""
     mutation CreatePost {{
       createPost(input: {{
-        text: {JSON.stringify("PLACEHOLDER")}
-        channelId: {JSON.stringify("CHANNEL_PLACEHOLDER")}
+        text: {json.dumps(caption, ensure_ascii=False)}
+        channelId: {json.dumps(channel_id)}
         schedulingType: automatic
         mode: addToQueue
-        assets: [{{ video: {{ url: {JSON.stringify("URL_PLACEHOLDER")} }} }}]
+        assets: [{{ video: {{ url: {json.dumps(video_url)} }} }}]
       }}) {{
         ... on PostActionSuccess {{
           post {{ id text dueAt status }}
@@ -48,13 +48,10 @@ def main():
       }}
     }}
     """
-    query = query.replace({JSON.stringify("PLACEHOLDER")}, json.dumps(caption, ensure_ascii=False))
-    query = query.replace({JSON.stringify("CHANNEL_PLACEHOLDER")}, json.dumps(channel_id))
-    query = query.replace({JSON.stringify("URL_PLACEHOLDER")}, json.dumps(video_url))
     response = requests.post(
         "https://api.buffer.com",
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"query": query, "variables": variables},
+        json={"query": query},
         timeout=60,
     )
     response.raise_for_status()
